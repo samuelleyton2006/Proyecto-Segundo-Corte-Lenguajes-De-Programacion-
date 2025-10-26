@@ -1,7 +1,11 @@
 ```bash
 file: [statements] ENDMARKER  # Un archivo consta de statements y un fin de archivo (ENDMARKER)
 
-statements: statement+      # statements es un conjunto de uno o mas statement
+statements: statement statements_refactor     # statements es un conjunto de uno o mas statement
+
+statements_refactor:
+    | statement statements_refactor
+    | ε
 
 statement:                 # Un statement puede ser un statement compuesto o uno simple
     | compound_stmt 
@@ -19,11 +23,14 @@ statement_newline:                    # Un statement con nueva linea es un state
     | ENDMARKER 
 
 
-simple_stmts:                          # Statements simples constan de un simple statement, si halla un ';' falla el 
-                                       # Analizador
-    | simple_stmt !';' NEWLINE         # Not needed, there for speedup
-    | ';'.simple_stmt+ [';'] NEWLINE   # Uno o mas statement separados por ; y el final puede terminar en ; con un salto
-                                       # de linea
+simple_stmts:                          #
+    | simple_stmt_list NEWLINE
+    | simple_stmt_list ';' NEWLINE  
+    
+     
+simple_stmt_list:
+    | simple_stmt
+    | simple_stmt ';' simple_stmt_list
 
 simple_stmt:
     | assignment
@@ -47,13 +54,38 @@ compound_stmt:
     | while_stmt
     | match_stmt
 
-
+#---
 assignment:
-    | NAME ':' expression ['=' annotated_rhs ]  # Asignacion de anotacion para variables (x: int) y (x: int=3)
-    | ('(' single_target ')'  # Anotacion con parentesis () o con objetos complejos (obj.attr: str)
-         | single_subscript_attribute_target) ':' expression ['=' annotated_rhs ] 
-    | (targets '=' )+ annotated_rhs !'=' [TYPE_COMMENT] # Uno o mas pares de asignaciones (a = b = 3)
-    | single_target augassign ~ annotated_rhs # Asignacion aumentada 
+    | annotated_name_assignment
+    | annotated_complex_assignment
+    | chained_assignment
+    | augmented_assignment
+
+annotated_name_assignment:
+    | NAME ':' expression assignment_refactor
+
+annotated_complex_assignment:
+    | '(' single_target ')' ':' expression assignment_refactor
+    | single_subscript_attribute_target ':' expression assignment_refactor
+
+assignment_refactor:
+    | '=' annotated_rhs
+    | ε
+
+chained_assignment:
+    | assignment_chain annotated_rhs type_comment
+
+type_comment:
+    | TYPE_COMMENT
+    | ε
+
+assignment_chain:
+    | targets '='
+    | targets '=' assignment_chain
+
+augmented_assignment:
+    | single_target augassign annotated_rhs
+
 
 annotated_rhs: expression
 
@@ -74,12 +106,20 @@ augassign: # Operador de asignacion aumentada
 
 
 ################ palabras reservadas a statements
-return_stmt: 
-    | 'return' [expression]  # Palabra reservada return y posibilidad de devolver valores 
 
+return_stmt:
+    | 'return' return_stmt_expression
+
+return_stmt_expression:
+    | expression
+    | ε
 raise_stmt:
-    | 'raise' expression ['from' expression ]  # Generar un error con un from
+    | 'raise' expression from_expression  # Generar un error con un from
     | 'raise'  # Re lanzar la excepción activa dentro de un bloque except
+
+from_expression:
+    | 'from' expression
+    | ε
 
 pass_stmt:
     | 'pass' # Permite no generar errores en los condicionales usando 'pass'
@@ -89,19 +129,42 @@ break_stmt:
 
 continue_stmt:
     | 'continue'  # Continua 
-################
 
-################ Creacion de variables especiales
-global_stmt: 'global' ','.NAME+  # Creacion de una o mas variables Globales usando , y NAME (global x,y)
 
-nonlocal_stmt: 'nonlocal' ','.NAME+ # Creacion de variables de tipo nonlocal (permite usar variables de funciones, en una funcion)
+#----------------- Creacion de variables especiales
+
+global_stmt:
+    | 'global' global_name_list
+
+global_name_list:
+    | NAME global_name_list_tail
+
+global_name_list_tail:
+    | ',' NAME global_name_list_tail
+    | ε
+
+nonlocal_stmt: 'nonlocal' nonlocal_name_list
+
+nonlocal_name_list:
+    | NAME nonlocal_name_list_tail
+
+nonlocal_name_list_tail
+    | ',' NAME global_name_list_tail
+    | ε
+
 
 del_stmt:
-    | 'del' del_targets &(';' | NEWLINE)  # Creacion de del junto con los targets a borrar, comprueba que venga ; o nueva linea sin necesidad de consumir el token
+    | 'del' del_targets del_stmt_terminator
 
+del_stmt_terminator:
+    | ';'
+    | NEWLINE
 
-assert_stmt: 'assert' expression [',' expression ] 
+assert_stmt: 'assert' expression assert_stmt_expression
 
+assert_stmt_expression:
+    | ',' expression
+    | ε
 #################### Import Statements
 import_stmt:
     | import_name
@@ -109,29 +172,74 @@ import_stmt:
 
 import_name: 'import' dotted_as_names  # Importacion con comas (,) y paquetes (.) con AS de la regla dotted_as_name
 
+
 import_from:
-    | 'from' ('.' | '...')* dotted_name 'import' import_from_targets 
-    | 'from' ('.' | '...')+ 'import' import_from_targets 
+    | 'from' dots dotted_name 'import' import_from_targets
+    | 'from' dots_only 'import' import_from_targets
+
+dots:
+    | dot dots_tail
+
+dots_tail:
+    | dot dots_tail
+    | ε
+
+dots_only:
+    | dot dots_tail   
+
+dot:
+    | '.'
+    | '...'
+
 
 import_from_targets:
-    | '(' import_from_as_names [','] ')' 
-    | import_from_as_names !','
-    | '*' 
+    | '(' import_from_as_names_opt_trailing_comma ')' 
+    | import_from_as_names_no_trailing_comma
+    | '*'
+
+
+import_from_as_names_opt_trailing_comma:
+    | import_from_as_names
+    | import_from_as_names ','
+
+import_from_as_names_no_trailing_comma:
+    | import_from_as_name import_from_as_names_tail
 
 import_from_as_names:
-    | ','.import_from_as_name+ 
+    | import_from_as_name import_from_as_names_tail
+
+import_from_as_names_tail:
+    | ',' import_from_as_name import_from_as_names_tail
+    | ε
+
+
 import_from_as_name:
-    | NAME ['as' NAME ] 
+    | NAME import_from_as_name_tail
+
+import_from_as_name_tail:
+    | 'as' NAME
+    | ε
 
 dotted_as_names:
-    | ','.dotted_as_name+  # una o mas concurrencias separadas por ,
+    | dotted_as_name dotted_as_names_tail
+
+dotted_as_names_tail:
+    | ',' dotted_as_name dotted_as_names_tail
+    | ε
 
 dotted_as_name:
-    | dotted_name ['as' NAME ]  # import AS 
+    | dotted_name dotted_as_name_tail
+
+dotted_as_name_tail:
+    | 'as' NAME
+    | ε
 
 dotted_name:
-    | dotted_name '.' NAME  # import .NAME
-    | NAME
+    | NAME dotted_name_tail
+
+dotted_name_tail:
+    | '.' NAME dotted_name_tail
+    | ε
 
 
 ##### Statemet compuesto
@@ -146,7 +254,16 @@ class_def:
     | class_def_raw
 
 class_def_raw:
-    | 'class' NAME ['(' [arguments] ')' ] ':' block  # Definicion formal de clase ( class NAME)
+    | 'class' NAME class_def_raw_parentesis ':' block  # Definicion formal de clase ( class NAME)
+
+class_def_raw_parentesis:
+    | '(' class_def_rauw_argument ')'
+    | ε
+
+class_def_raw_argument
+    | arguments
+    | ε
+
 
 #####  FUNCIONES
 
@@ -154,7 +271,7 @@ function_def:
     | function_def_raw 
 
 function_def_raw: # definicion de funciones normales def () y asincronicas ->
-    | 'def' NAME [type_params] '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
+    | 'def' NAME '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
     | 'async' 'def' NAME '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
 
 
@@ -344,6 +461,8 @@ expressions:
     | expression ',' 
     | expression
 
+
+
 expression:
     | disjunction 'if' disjunction 'else' expression 
     | disjunction
@@ -402,39 +521,61 @@ isnot_bitwise_or: 'is' 'not' bitwise_or
 
 is_bitwise_or: 'is' bitwise_or 
 
+# BITWISE OPERATORS
 
 bitwise_or:
-    | bitwise_or '|' bitwise_xor 
-    | bitwise_xor
+    | bitwise_xor bitwise_or_refactor
+  
+bitwise_or_refactor:
+    | '|' bitwise_xor bitwise_or_refactor
+    | ε
+
 
 bitwise_xor:
-    | bitwise_xor '^' bitwise_and 
-    | bitwise_and
+    | bitwise_and bitwise_xor_tail
+
+
+bitwise_xor_refactor:
+    | '^' bitwise_and bitwise_xor_refactor
+    | ε
 
 bitwise_and:
-    | bitwise_and '&' shift_expr 
-    | shift_expr
+    | shift_expr bitwise_and_refactor
+
+bitwise_and_refactor:
+    | '&' shitf_expr bitwise_and_refactor
+    | ε
 
 shift_expr:
-    | shift_expr '<<' sum 
-    | shift_expr '>>' sum 
-    | sum
+    | sum shitf_expr_refacto
+
+shift_expr_refactor:
+    | '<<' sum shitf_expr_refactor
+    | '>>' sum shitf_expr_refactor
+    | ε
 
 # Operaciones Aritmeticas
 
 
 sum:
-    | sum '+' term 
-    | sum '-' term 
-    | term
+    | term sum_tail
+
+sum_tail:
+    | '+' term sum_tail
+    | '-' term sum_tail
+    | ε
+
 
 term:
-    | term '*' factor 
-    | term '/' factor 
-    | term '//' factor 
-    | term '%' factor 
-    | term '@' factor 
-    | factor
+    | factor term_tail
+
+term_tail:
+    | '*' factor term_tail
+    | '/' factor term_tail
+    | '//' factor term_tail
+    | '%' factor term_tail
+    | '@' factor term_tail
+    | ε
 
 factor:
     | '+' factor 
@@ -506,7 +647,7 @@ kvpair: expression ':' expression
 # FUNCTION CALL ARGUMENTS
 
 arguments:
-    | arg_list [','] &')' 
+    | [arg_list] [',']
 
 arg_list:
     | positional_args [',' keyword_args]   # posicionales opcionales, luego opcionales keyword
@@ -559,11 +700,13 @@ single_subscript_attribute_target:
     | t_primary '[' slices ']' !t_lookahead 
 
 t_primary:
-    | t_primary '.' NAME &t_lookahead 
-    | t_primary '[' slices ']' &t_lookahead 
-    | t_primary genexp &t_lookahead 
-    | t_primary '(' [arguments] ')' &t_lookahead 
-    | atom &t_lookahead 
+    | atom t_primary_refactor
+
+t_primary_refactor:
+    | '.' NAME t_primary_refactor
+    | '[' slices ']' t_primary_refactor
+    | '(' [arguments] ')' t_primary_ractor
+    | ε
 
 t_lookahead: '(' | '[' | '.'
 
