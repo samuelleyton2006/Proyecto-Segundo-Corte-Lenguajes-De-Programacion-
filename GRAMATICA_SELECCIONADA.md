@@ -1,4 +1,4 @@
-
+```bash
 file: [statements] ENDMARKER  # Un archivo consta de statements y un fin de archivo (ENDMARKER)
 
 statements: statement+      # statements es un conjunto de uno o mas statement
@@ -11,7 +11,7 @@ single_compound_stmt:        # Un statement compuesto solo, consta de un stateme
     | compound_stmt 
 
 
-statement_newline:                    # U statement con nueva linea es un statement compuesto solo seguido 
+statement_newline:                    # Un statement con nueva linea es un statement compuesto solo seguido 
                                       # de un salto de linea linea o un statement simple o una nueva linea o un
     | single_compound_stmt NEWLINE    # fin de marcador
     | simple_stmts
@@ -24,3 +24,576 @@ simple_stmts:                          # Statements simples constan de un simple
     | simple_stmt !';' NEWLINE         # Not needed, there for speedup
     | ';'.simple_stmt+ [';'] NEWLINE   # Uno o mas statement separados por ; y el final puede terminar en ; con un salto
                                        # de linea
+
+simple_stmt:
+    | assignment
+    | type_alias
+    | return_stmt
+    | import_stmt
+    | raise_stmt
+    | pass_stmt
+    | del_stmt
+    | assert_stmt
+    | break_stmt
+    | continue_stmt
+    | global_stmt
+    | nonlocal_stmt
+
+compound_stmt:
+    | function_def
+    | if_stmt
+    | class_def
+    | with_stmt
+    | for_stmt
+    | try_stmt
+    | while_stmt
+    | match_stmt
+
+
+assignment:
+    | NAME ':' expression ['=' annotated_rhs ]  # Asignacion de anotacion para variables (x: int) y (x: int=3)
+    | ('(' single_target ')'  # Anotacion con parentesis () o con objetos complejos (obj.attr: str)
+         | single_subscript_attribute_target) ':' expression ['=' annotated_rhs ] 
+    | (targets '=' )+ annotated_rhs !'=' [TYPE_COMMENT] # Uno o mas pares de asignaciones (a = b = 3)
+    | single_target augassign ~ annotated_rhs # Asignacion aumentada 
+
+annotated_rhs: expression
+
+augassign: # Operador de asignacion aumentada
+    | '+=' 
+    | '-=' 
+    | '*=' 
+    | '@=' 
+    | '/=' 
+    | '%=' 
+    | '&=' 
+    | '|=' 
+    | '^=' 
+    | '<<=' 
+    | '>>=' 
+    | '**=' 
+    | '//=' 
+
+
+################ palabras reservadas a statements
+return_stmt: 
+    | 'return' [expression]  # Palabra reservada return y posibilidad de devolver valores 
+
+raise_stmt:
+    | 'raise' expression ['from' expression ]  # Generar un error con un from
+    | 'raise'  # Re lanzar la excepción activa dentro de un bloque except
+
+pass_stmt:
+    | 'pass' # Permite no generar errores en los condicionales usando 'pass'
+
+break_stmt:
+    | 'break'  # Rompe el statement
+
+continue_stmt:
+    | 'continue'  # Continua 
+################
+
+################ Creacion de variables especiales
+global_stmt: 'global' ','.NAME+  # Creacion de una o mas variables Globales usando , y NAME (global x,y)
+
+nonlocal_stmt: 'nonlocal' ','.NAME+ # Creacion de variables de tipo nonlocal (permite usar variables de funciones, en una funcion)
+
+del_stmt:
+    | 'del' del_targets &(';' | NEWLINE)  # Creacion de del junto con los targets a borrar, comprueba que venga ; o nueva linea sin necesidad de consumir el token
+
+
+assert_stmt: 'assert' expression [',' expression ] 
+
+#################### Import Statements
+import_stmt:
+    | import_name
+    | import_from
+
+import_name: 'import' dotted_as_names  # Importacion con comas (,) y paquetes (.) con AS de la regla dotted_as_name
+
+import_from:
+    | 'from' ('.' | '...')* dotted_name 'import' import_from_targets 
+    | 'from' ('.' | '...')+ 'import' import_from_targets 
+
+import_from_targets:
+    | '(' import_from_as_names [','] ')' 
+    | import_from_as_names !','
+    | '*' 
+
+import_from_as_names:
+    | ','.import_from_as_name+ 
+import_from_as_name:
+    | NAME ['as' NAME ] 
+
+dotted_as_names:
+    | ','.dotted_as_name+  # una o mas concurrencias separadas por ,
+
+dotted_as_name:
+    | dotted_name ['as' NAME ]  # import AS 
+
+dotted_name:
+    | dotted_name '.' NAME  # import .NAME
+    | NAME
+
+
+##### Statemet compuesto
+
+
+block: # Se usa para identacion de bloques, 
+    | NEWLINE INDENT statements DEDENT 
+    | simple_stmts
+####### CLASES
+
+class_def:
+    | class_def_raw
+
+class_def_raw:
+    | 'class' NAME [type_params] ['(' [arguments] ')' ] ':' block  # Definicion formal de clase ( class NAME)
+
+#####  FUNCIONES
+
+function_def:
+    | function_def_raw 
+
+function_def_raw: # definicion de funciones normales def () y asincronicas ->
+    | 'def' NAME [type_params] '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
+    | 'async' 'def' NAME [type_params] '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
+
+
+### PARAMETROS DE FUNCIONES
+
+params:
+    | [param_list]                # lista opcional de parámetros
+
+param_list:
+    | param (',' param)* [',']    # uno o mas parámetros separados por comas, coma final opcional
+
+param:
+    | NAME [':' expression] ['=' expression]   # name [: annotation] [= default]
+
+annotation: ':' expression
+default: '=' expression  | invalid_default
+
+
+#### if statement
+
+if_stmt:
+    | 'if' named_expression ':' block elif_stmt  
+    | 'if' named_expression ':' block [else_block] 
+elif_stmt:
+    | 'elif' named_expression ':' block elif_stmt 
+    | 'elif' named_expression ':' block [else_block] 
+else_block:
+    | 'else' ':' block 
+
+
+#### WHILE STATEMENT
+while_stmt:
+    | 'while' named_expression ':' block [else_block] 
+
+
+
+# For statement
+for_stmt:
+    | 'for' targets 'in' ~ expression ':' [TYPE_COMMENT] block [else_block]
+    | 'async' 'for' targets 'in' ~ expression ':' [TYPE_COMMENT] block [else_block]
+
+
+
+
+# Try statement
+
+try_stmt:
+    | 'try' ':' block finally_block 
+    | 'try' ':' block except_block+ [else_block] [finally_block] 
+
+
+
+# Except statement
+
+except_block: # Manejo de errores normales
+    | 'except' expression ':' block 
+    | 'except' expression 'as' NAME ':' block 
+    | 'except' expressions ':' block 
+    | 'except' ':' block 
+
+finally_block: # Bloque de final
+    | 'finally' ':' block  
+
+# Match statement
+match_stmt: # Es como un switch 
+    | "match" subject_expr ':' NEWLINE INDENT case_block+ DEDENT # Identacion, debe tener al menos un case_block
+
+subject_expr:
+    | named_expression
+    | named_expression (',' named_expression)+ [',']  # uno o más sujetos separados por comas (sin '*')
+
+case_block:
+    | "case" patterns guard? ':' block  # Para cada caso, puede etener un guard que es una expresion if
+
+guard: 'if' named_expression 
+
+
+
+patterns:
+    | open_sequence_pattern 
+    | pattern
+
+pattern:
+    | as_pattern
+    | or_pattern
+
+as_pattern:
+    | or_pattern 'as' pattern_capture_target 
+
+or_pattern:
+    | '|'.closed_pattern+ # Acepta or
+
+closed_pattern:
+    | literal_pattern
+    | capture_pattern
+    | value_pattern
+    | group_pattern
+    | sequence_pattern
+    | mapping_pattern
+    | class_pattern
+
+
+
+
+# Literal patterns
+literal_pattern:
+    | signed_number !('+' | '-')  # un numero sin signo
+    | strings 
+    | 'None' 
+    | 'True' 
+    | 'False' 
+
+
+# Literal expressions are used to restrict permitted mapping pattern keys
+literal_expr:
+    | signed_number !('+' | '-')
+    | complex_number
+    | strings
+    | 'None' 
+    | 'True' 
+    | 'False' 
+# Numero entero con signo
+signed_number:
+    | NUMBER
+    | '-' NUMBER 
+# Numero real con signo
+signed_real_number:
+    | real_number
+    | '-' real_number 
+# Numero real
+real_number:
+    | NUMBER 
+
+capture_pattern:
+    | pattern_capture_target 
+
+pattern_capture_target:
+    | !"_" NAME !('.' | '(' | '=')  # Captura solo el nombre
+
+value_pattern:
+    | attr !('.' | '(' | '=')  
+
+attr:
+    | name_or_attr '.' NAME  # Para hacer matching de valores como atributos
+
+name_or_attr:
+    | attr
+    | NAME
+
+group_pattern:
+    | '(' pattern ')'  # acepta parentesis para agrupar
+
+sequence_pattern:
+    | '[' [ pattern (',' pattern)* [','] ] ']'  # lista 
+    | '(' [ pattern (',' pattern)* [','] ] ')'  # tupla 
+
+# Mapeo para match y case
+mapping_pattern:
+    | '{' '}' 
+    | '{' items_pattern ','? '}' 
+
+items_pattern:
+    | ','.key_value_pattern+
+
+key_value_pattern:
+    | (literal_expr | attr) ':' pattern 
+
+
+class_pattern:
+    | name_or_attr '(' ')' # Clase vacia
+    | name_or_attr '(' positional_patterns ','? ')'  # Clase con argumentos posicionales
+    | name_or_attr '(' keyword_patterns ','? ')' # Argumentos por nombre
+    | name_or_attr '(' positional_patterns ',' keyword_patterns ','? ')'  # Mezcla
+
+positional_patterns:
+    | ','.pattern+  # Lista de patrones separados por comas
+
+keyword_patterns:
+    | ','.keyword_pattern+ # lista de nombres separadas por comas
+
+keyword_pattern:
+    | NAME '=' pattern  # Asignacion de valor
+
+
+# EXPRESSIONS
+
+expressions:
+    | expression (',' expression )+ [','] 
+    | expression ',' 
+    | expression
+
+expression:
+    | disjunction 'if' disjunction 'else' expression 
+    | disjunction
+
+assignment_expression:
+    | NAME ':=' ~ expression 
+
+named_expression:
+    | assignment_expression
+    | expression !':='
+
+disjunction:
+    | conjunction ('or' conjunction )+ 
+    | conjunction
+
+conjunction:
+    | inversion ('and' inversion )+ 
+    | inversion
+inversion:
+    | 'not' inversion 
+    | comparison
+# Operadores de comparacion
+comparison:
+    | bitwise_or compare_op_bitwise_or_pair+ 
+    | bitwise_or
+
+compare_op_bitwise_or_pair:
+    | eq_bitwise_or
+    | noteq_bitwise_or
+    | lte_bitwise_or
+    | lt_bitwise_or
+    | gte_bitwise_or
+    | gt_bitwise_or
+    | notin_bitwise_or
+    | in_bitwise_or
+    | isnot_bitwise_or
+    | is_bitwise_or
+
+eq_bitwise_or: '==' bitwise_or 
+noteq_bitwise_or:
+    | ('!=' ) bitwise_or 
+
+lte_bitwise_or: '<=' bitwise_or 
+
+lt_bitwise_or: '<' bitwise_or 
+
+gte_bitwise_or: '>=' bitwise_or 
+
+gt_bitwise_or: '>' bitwise_or 
+
+notin_bitwise_or: 'not' 'in' bitwise_or 
+
+in_bitwise_or: 'in' bitwise_or 
+
+isnot_bitwise_or: 'is' 'not' bitwise_or 
+
+is_bitwise_or: 'is' bitwise_or 
+
+
+bitwise_or:
+    | bitwise_or '|' bitwise_xor 
+    | bitwise_xor
+
+bitwise_xor:
+    | bitwise_xor '^' bitwise_and 
+    | bitwise_and
+
+bitwise_and:
+    | bitwise_and '&' shift_expr 
+    | shift_expr
+
+shift_expr:
+    | shift_expr '<<' sum 
+    | shift_expr '>>' sum 
+    | sum
+
+# Operaciones Aritmeticas
+
+
+sum:
+    | sum '+' term 
+    | sum '-' term 
+    | term
+
+term:
+    | term '*' factor 
+    | term '/' factor 
+    | term '//' factor 
+    | term '%' factor 
+    | term '@' factor 
+    | factor
+
+factor:
+    | '+' factor 
+    | '-' factor 
+    | '~' factor 
+    | power
+
+power:
+    | await_primary '**' factor 
+    | await_primary
+
+
+# Elementos primarios (Atributos,metodos)
+
+await_primary: # funciones para co rutinas
+    | 'await' primary 
+    | primary
+
+primary:
+    | primary '.' NAME  # acceso a atributos
+    | primary genexp 
+    | primary '(' [arguments] ')' 
+    | primary '[' slices ']' 
+    | atom
+
+slices:
+    | slice !',' 
+    | ','.(slice | starred_expression)+ [','] 
+
+slice:
+    | [expression] ':' [expression] [':' [expression] ] 
+    | named_expression 
+
+atom:
+    | NAME
+    | 'True' 
+    | 'False' 
+    | 'None' 
+    | strings
+    | NUMBER
+    | (tuple | group | genexp)
+    | (list | listcomp)
+    | (dict | set | dictcomp | setcomp)
+    | '...' 
+
+
+# TOKEN STRING
+string: STRING 
+
+list:
+    | '[' [expressions] ']' 
+
+tuple:
+    | '(' [expressions] ')' 
+
+set:
+    | '{' [expressions] '}'
+
+
+
+# Diccionario
+dict:
+    | '{' [kvpair (',' kvpair)* [','] ] '}' 
+
+kvpair: expression ':' expression 
+
+
+# FUNCTION CALL ARGUMENTS
+
+arguments:
+    | args [','] &')' 
+
+arg_list:
+    | positional_args [',' keyword_args]   # posicionales opcionales, luego opcionales keyword
+    | keyword_args                         # o solo keyword args
+
+positional_args:
+    | positional (',' positional)*
+
+positional:
+    | assignment_expression    
+    | expression !':='        
+
+keyword_args:
+    | kwarg (',' kwarg)*
+
+kwarg:
+    | NAME '=' expression 
+
+# ASSIGNMENT TARGETS
+
+targets:
+    | single_target !',' 
+    | single_target (',' single_target )* [','] 
+
+targets_list_seq: ','.single_target+ [','] 
+
+targets_tuple_seq:
+    | single_target (',' single_target )+ [','] 
+    | single_target ',' 
+
+
+target_with_atom:
+    | t_primary '.' NAME !t_lookahead 
+    | t_primary '[' slices ']' !t_lookahead 
+    | atom_target
+
+atom_target:
+    | NAME 
+    | '(' target_with_atom ')' 
+    | '(' [targets_tuple_seq] ')' 
+    | '[' [targets_list_seq] ']' 
+
+single_target:
+    | single_subscript_attribute_target
+    | NAME 
+    | '(' single_target ')' 
+
+single_subscript_attribute_target:
+    | t_primary '.' NAME !t_lookahead 
+    | t_primary '[' slices ']' !t_lookahead 
+
+t_primary:
+    | t_primary '.' NAME &t_lookahead 
+    | t_primary '[' slices ']' &t_lookahead 
+    | t_primary genexp &t_lookahead 
+    | t_primary '(' [arguments] ')' &t_lookahead 
+    | atom &t_lookahead 
+
+t_lookahead: '(' | '[' | '.'
+
+# Targets for del statements
+
+del_targets: ','.del_target+ [','] 
+
+del_target:
+    | t_primary '.' NAME !t_lookahead 
+    | t_primary '[' slices ']' !t_lookahead 
+    | del_t_atom
+
+del_t_atom:
+    | NAME 
+    | '(' del_target ')' 
+    | '(' [del_targets] ')' 
+    | '[' [del_targets] ']' 
+
+
+# TYPING ELEMENTS
+type_expressions:
+    | ','.expression+ [',']  # lista de expresiones separadas por comas (ej. int, str, bool)
+
+func_type_comment:
+    | NEWLINE TYPE_COMMENT &(NEWLINE INDENT)   # Must be followed by indented block
+    | TYPE_COMMENT
+
+
+
+```bash
