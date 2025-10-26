@@ -849,8 +849,15 @@ kwarg:
 # ASSIGNMENT TARGETS
 
 targets:
-    | single_target !',' 
-    | single_target (',' single_target )* [','] 
+    | single_target targets_tail
+
+targets_tail:
+    | ',' single_target targets_tail
+    | ',' 
+    | ε    
+
+# Targets_list
+# ------------------- FALTA ESTO----------------------
 
 targets_list_seq: ','.single_target+ [','] 
 

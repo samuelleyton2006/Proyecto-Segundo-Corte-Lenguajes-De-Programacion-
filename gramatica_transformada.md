@@ -739,4 +739,20 @@ positional_args_refactor:
     | ',' positional positional_args_refactor
     | ε
 
+
+#----------------------------targets--------------------------------------
+
+
+targets:
+    | single_target 
+    | single_target (',' single_target )* [','] 
+# -------------------- TRANSFORMACION ----------------------------------
+targets:
+    | single_target targets_tail
+
+targets_tail:
+    | ',' single_target targets_tail
+    | ',' 
+    | ε    
+
 ```bash
