@@ -270,7 +270,6 @@ literal_pattern:
 # Literal expressions are used to restrict permitted mapping pattern keys
 literal_expr:
     | signed_number !('+' | '-')
-    | complex_number
     | strings
     | 'None' 
     | 'True' 
@@ -455,11 +454,12 @@ await_primary: # funciones para co rutinas
     | primary
 
 primary:
-    | primary '.' NAME  # acceso a atributos
-    | primary genexp 
-    | primary '(' [arguments] ')' 
-    | primary '[' slices ']' 
-    | atom
+    | atom trailer*
+
+trailer:
+    | '.' NAME
+    | '(' [arguments] ')'
+    | '[' slices ']'
 
 slices:
     | slice !',' 
@@ -474,7 +474,7 @@ atom:
     | 'True' 
     | 'False' 
     | 'None' 
-    | strings
+    | string
     | NUMBER
     | (tuple | group)
     | list
