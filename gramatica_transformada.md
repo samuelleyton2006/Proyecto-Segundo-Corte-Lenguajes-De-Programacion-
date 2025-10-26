@@ -324,4 +324,419 @@ class_def_raw_parentesis:
 class_def_raw_argument
     | arguments
     | ε
+
+#----------------param-----------------------------------
+
+params:
+    | [param_list]                # lista opcional de parámetros
+
+param_list:
+    | param (',' param)* [',']    # uno o mas parámetros separados por comas, coma final opcional
+param:
+    | NAME [':' expression] ['=' expression]   # name [: annotation] [= default]
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+params:
+    | ε
+    | param_list
+    | param_list ','
+
+
+param_list:
+    | param param_list_rest
+
+param_list_rest:
+    | ',' param param_list_rest
+    | ε
+
+param:
+    | NAME param_tail
+
+param_tail:
+    | ':' expression param_default_opt
+    | '=' expression
+    | ε
+
+param_default_opt:
+    | '=' expression
+    | ε
+
+#----------------IF STATEMENT-----------------------------------
+
+
+if_stmt:
+    | 'if' named_expression ':' block elif_stmt  
+    | 'if' named_expression ':' block [else_block]
+elif_stmt:
+    | 'elif' named_expression ':' block elif_stmt 
+    | 'elif' named_expression ':' block [else_block]
+else_block:
+    | 'else' ':' block
+
+# -------------------- TRANSFORMACION ----------------------------------
+if_stmt:
+    | 'if' named_expression ':' block elif_stmt  
+    | 'if' named_expression ':' block else_block
+elif_stmt:
+    | 'elif' named_expression ':' block elif_stmt 
+    | 'elif' named_expression ':' block else_block
+else_block:
+    | 'else' ':' block
+    | ε
+
+#----------------FOR STATEMENT-----------------------------------
+
+for_stmt:
+    | 'for' star_targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block] 
+    | 'async' 'for' star_targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block] 
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+for_stmt:
+    | for_prefix targets 'in' expression ':' type_comment_opt block else_block_opt
+
+for_prefix:
+    | 'for'
+    | 'async' 'for'
+
+type_comment_opt:
+    | TYPE_COMMENT
+    | ε
+
+else_block_opt:
+    | else_block
+    | ε
+
+
+#----------------TRY STATEMENT-----------------------------------
+
+
+try_stmt:
+    | 'try' ':' block finally_block 
+    | 'try' ':' block except_block+ [else_block] [finally_block] 
+    | 'try' ':' block except_star_block+ [else_block] [finally_block] 
+
+# -------------------- TRANSFORMACION ----------------------------------
+try_stmt:
+    | 'try' ':' block try_continuation
+
+try_continuation:
+    | finally_block
+    | except_block_list else_block finally_block
+
+except_block_list:
+    | except_block except_block_list_tail
+
+except_block_list_tail:
+    | except_block except_block_list_tail
+    | ε
+
+except_block:
+    | 'except' except_header ':' block
+
+except_header:
+    | expression 'as' NAME
+    | expression
+    | expressions
+    | ε
+
+finally_block:
+    | 'finally' ':' block
+    | ε
+
+#----------------MATCH STATEMENT-----------------------------------
+
+
+match_stmt: # Es como un switch 
+    | "match" subject_expr ':' NEWLINE INDENT case_block+ DEDENT # Identacion, debe tener al menos un case_block
+
+subject_expr:
+    | named_expression
+    | named_expression (',' named_expression)+ [',']  # uno o más sujetos separados por comas (sin '*')
+
+case_block:
+    | "case" patterns guard? ':' block  # Para cada caso, puede etener un guard que es una expresion if
+
+guard: 'if' named_expression 
+
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+
+match_stmt:
+    | 'match' subject_expr ':' NEWLINE INDENT case_block_list DEDENT
+
+
+subject_expr:
+    | named_expression subject_expr_tail
+
+subject_expr_tail:
+    | ',' named_expression subject_expr_tail_opt_comma
+    | ε
+
+subject_expr_tail_opt_comma:
+    | ',' 
+    | ε
+
+
+case_block_list:
+    | case_block case_block_list_tail
+
+case_block_list_tail:
+    | case_block case_block_list_tail
+    | ε
+
+
+case_block:
+    | 'case' patterns guard_opt ':' block
+
+guard_opt:
+    | guard
+    | ε
+
+guard:
+    | 'if' named_expression
+
+#-------sequence_pattern:-----------------------------------------------
+
+sequence_pattern:
+    | '[' [ pattern (',' pattern)* [','] ] ']'  # lista 
+    | '(' [ pattern (',' pattern)* [','] ] ')'  # tupla
+
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+sequence_pattern:
+    | '[' pattern_list_opt ']'
+    | '(' pattern_list_opt ')'
+
+pattern_list_opt:
+    | pattern pattern_list_rest
+    | ε
+
+pattern_list_rest:
+    | ',' pattern pattern_list_rest
+    | ',' 
+    | ε
+
+
+#----------Mapping pattern--------------------------------------------
+mapping_pattern:
+    | '{' '}' 
+    | '{' items_pattern ','? '}' 
+
+items_pattern:
+    | ','.key_value_pattern+
+
+key_value_pattern:
+    | (literal_expr | attr) ':' pattern
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+mapping_pattern:
+    | '{' mapping_items '}'
+
+mapping_items:
+    | ε
+    | key_value_list
+    | key_value_list ','
+
+key_value_list:
+    | key_value_pair key_value_list_tail
+
+key_value_list_tail:
+    | ',' key_value_pair key_value_list_tail
+    | ε
+
+key_value_pair:
+    | literal_expr ':' pattern
+    | attr ':' pattern
+
+#----------------------------class pattern---------------------------------------
+
+
+class_pattern:
+    | name_or_attr '(' ')' # Clase vacia
+    | name_or_attr '(' positional_patterns ','? ')'  # Clase con argumentos posicionales
+    | name_or_attr '(' keyword_patterns ','? ')' # Argumentos por nombre
+    | name_or_attr '(' positional_patterns ',' keyword_patterns ','? ')'  # Mezcla
+
+positional_patterns:
+    | ','.pattern+  # Lista de patrones separados por comas
+
+keyword_patterns:
+    | ','.keyword_pattern+ # lista de nombres separadas por comas
+
+keyword_pattern:
+    | NAME '=' pattern  # Asignacion de valor
+
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+
+class_pattern:
+    | name_or_attr '(' class_pattern_body ')'
+
+class_pattern_body:
+    | ε
+    | positional_patterns class_pattern_body_rest
+    | keyword_patterns class_pattern_body_comma_opt
+
+class_pattern_body_rest:
+    | ',' keyword_patterns class_pattern_body_comma_opt
+    | class_pattern_body_comma_opt
+
+class_pattern_body_comma_opt:
+    | ','
+    | ε
+
+#----------------------------comparison---------------------------------------
+
+
+comparison:
+    | bitwise_or compare_op_bitwise_or_pair+ 
+    | bitwise_or
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+
+comparison:
+    | bitwise_or comparison_tail
+
+comparison_tail:
+    | compare_op_bitwise_or_pair comparison_tail
+    | ε
+#----------------------------await---------------------------------------
+await_primary: # funciones para co rutinas
+    | 'await' primary 
+    | primary
+
+primary:
+    | atom trailer*
+
+trailer:
+    | '.' NAME
+    | '(' [arguments] ')'
+    | '[' slices ']'
+# -------------------- TRANSFORMACION ----------------------------------
+
+await_primary:
+    | 'await' primary
+    | atom trailer_seq
+
+primary:
+    | atom trailer_seq
+
+trailer_seq:
+    | trailer trailer_seq
+    | ε
+
+trailer:
+    | '.' NAME
+    | '(' arguments_opt ')'
+    | '[' slices ']'
+
+arguments_opt:
+    | arguments
+    | ε
+
+
+#----------------------------slices---------------------------------------
+
+
+slices:
+    | slice !',' 
+    | ','.slice [','] 
+
+slice:
+    | [expression] ':' [expression] [':' [expression] ] 
+    | named_expression 
+
+# -------------------- TRANSFORMACION ----------------------------------
+slices:
+    | slice slices_tail
+
+slices_tail:
+    | ',' slice slices_tail
+    | ε
+
+slice:
+    | slice_index
+    | named_expression
+
+slice_index:
+    | expression_opt ':' expression_opt slice_step_opt
+
+expression_opt:
+    | expression
+    | ε
+
+slice_step_opt:
+    | ':' expression_opt
+    | ε
+
+#----------------------------DICT Y SET---------------------------------------
+
+
+set: '{' star_named_expressions '}' 
+
+
+dict:
+    | '{' [double_starred_kvpairs] '}' 
+
+double_starred_kvpairs: ','.double_starred_kvpair+ [','] 
+
+double_starred_kvpair:
+    | '**' bitwise_or 
+    | kvpair
+
+# -------------------- TRANSFORMACION ----------------------------------
+
+collection:
+    | '{' dict_or_set '}'
+
+collection_content:
+    | kvpair kvpair_list_tail     # dict
+    | expression set_list_tail    # set
+    | ε    
+
+# Diccionario o set
+kvpair_list_tail:
+    | ',' kvpair kvpair_list_tail
+    | ε
+
+set_list_tail:
+    | ',' expression set_list_tail
+    | ε
+
+#----------------------------arg_list---------------------------------------
+
+
+arg_list:
+    | positional_args [',' keyword_args]   # posicionales opcionales, luego opcionales keyword
+    | keyword_args                         # o solo keyword args
+# -------------------- TRANSFORMACION ----------------------------------
+
+arg_list:
+    | positional_args arg_list_refactor
+    | keyword_args
+arg_list_refactor:
+    | ',' keyword_args
+    | ε
+
+
+#----------------------------positional_args--------------------------------------
+
+positional_args:
+    | positional (',' positional)*
+
+# -------------------- TRANSFORMACION ----------------------------------
+positional_args:
+    | positional positional_args_refactor
+
+positional_args_refactor:
+    | ',' positional positional_args_refactor
+    | ε
+
 ```bash
