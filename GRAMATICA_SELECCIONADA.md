@@ -27,7 +27,6 @@ simple_stmts:                          # Statements simples constan de un simple
 
 simple_stmt:
     | assignment
-    | type_alias
     | return_stmt
     | import_stmt
     | raise_stmt
@@ -43,7 +42,6 @@ compound_stmt:
     | function_def
     | if_stmt
     | class_def
-    | with_stmt
     | for_stmt
     | try_stmt
     | while_stmt
@@ -148,7 +146,7 @@ class_def:
     | class_def_raw
 
 class_def_raw:
-    | 'class' NAME [type_params] ['(' [arguments] ')' ] ':' block  # Definicion formal de clase ( class NAME)
+    | 'class' NAME ['(' [arguments] ')' ] ':' block  # Definicion formal de clase ( class NAME)
 
 #####  FUNCIONES
 
@@ -157,7 +155,7 @@ function_def:
 
 function_def_raw: # definicion de funciones normales def () y asincronicas ->
     | 'def' NAME [type_params] '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
-    | 'async' 'def' NAME [type_params] '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
+    | 'async' 'def' NAME '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
 
 
 ### PARAMETROS DE FUNCIONES
@@ -172,7 +170,7 @@ param:
     | NAME [':' expression] ['=' expression]   # name [: annotation] [= default]
 
 annotation: ':' expression
-default: '=' expression  | invalid_default
+default: '=' expression 
 
 
 #### if statement
@@ -236,7 +234,6 @@ guard: 'if' named_expression
 
 
 patterns:
-    | open_sequence_pattern 
     | pattern
 
 pattern:
@@ -466,7 +463,7 @@ primary:
 
 slices:
     | slice !',' 
-    | ','.(slice | starred_expression)+ [','] 
+    | ','.slice [','] 
 
 slice:
     | [expression] ':' [expression] [':' [expression] ] 
@@ -479,11 +476,11 @@ atom:
     | 'None' 
     | strings
     | NUMBER
-    | (tuple | group | genexp)
-    | (list | listcomp)
-    | (dict | set | dictcomp | setcomp)
+    | (tuple | group)
+    | list
+    | dict
+    | set
     | '...' 
-
 
 # TOKEN STRING
 string: STRING 
@@ -509,7 +506,7 @@ kvpair: expression ':' expression
 # FUNCTION CALL ARGUMENTS
 
 arguments:
-    | args [','] &')' 
+    | arg_list [','] &')' 
 
 arg_list:
     | positional_args [',' keyword_args]   # posicionales opcionales, luego opcionales keyword
