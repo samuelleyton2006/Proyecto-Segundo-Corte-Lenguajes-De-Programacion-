@@ -24,13 +24,12 @@ statement:
     | small_stmt_line
 
 compound_stmt:
+    | function_def
     | if_stmt
-    | while_stmt
+    | class_def
     | for_stmt
     | try_stmt
-    | with_stmt
-    | funcdef
-    | classdef
+    | while_stmt
     | match_stmt
 
 small_stmt_line:
@@ -44,14 +43,23 @@ small_stmt_list_tail:
     | ε
 
 small_stmt:
-    | expr_stmt
+    | assignment
+    | return_stmt
     | import_stmt
+    | raise_stmt
     | pass_stmt
-    | flow_stmt
+    | del_stmt
+    | assert_stmt
+    | break_stmt
+    | continue_stmt
     | global_stmt
     | nonlocal_stmt
+<<<<<<< HEAD
     | assert_stmt
 
+=======
+    
+>>>>>>> origin
 single_compound_stmt:        # Un statement compuesto solo, consta de un statement compuesto
     | compound_stmt 
 
@@ -60,7 +68,6 @@ statement_newline:                    # Un statement con nueva linea es un state
                                       # de un salto de linea linea o un statement simple o una nueva linea o un
     | single_compound_stmt NEWLINE    # fin de marcador
     | simple_stmts
-    | NEWLINE 
     | ENDMARKER 
 
 
