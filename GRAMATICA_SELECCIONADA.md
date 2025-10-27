@@ -66,19 +66,22 @@ compound_stmt:
     | while_stmt
     | match_stmt
 
-#---
+#-------------
+
 assignment:
-    | annotated_name_assignment
-    | annotated_complex_assignment
-    | chained_assignment
-    | augmented_assignment
+    | target_assignment assignment_after_target
 
-annotated_name_assignment:
-    | NAME ':' expression assignment_refactor
+target_assignment:
+    | NAME
+    | '(' single_target ')'
+    | single_subscript_attribute_target
 
-annotated_complex_assignment:
-    | '(' single_target ')' ':' expression assignment_refactor
-    | single_subscript_attribute_target ':' expression assignment_refactor
+
+assignment_after_target:
+    | ':' expression assignment_refactor     # annotated assignment
+    | '=' annotated_rhs type_comment          # simple / chained assignment
+    | augassign annotated_rhs    
+
 
 assignment_refactor:
     | '=' annotated_rhs
@@ -160,8 +163,8 @@ nonlocal_stmt: 'nonlocal' nonlocal_name_list
 nonlocal_name_list:
     | NAME nonlocal_name_list_tail
 
-nonlocal_name_list_tail
-    | ',' NAME global_name_list_tail
+nonlocal_name_list_tail:
+    | ',' NAME nonlocal_name_list_tail
     | ε
 
 
@@ -273,10 +276,10 @@ class_def_raw:
     | 'class' NAME class_def_raw_parentesis ':' block  # Definicion formal de clase ( class NAME)
 
 class_def_raw_parentesis:
-    | '(' class_def_rauw_argument ')'
+    | '(' class_def_raw_argument ')'
     | ε
 
-class_def_raw_argument
+class_def_raw_argument:
     | arguments
     | ε
 
@@ -453,7 +456,7 @@ closed_pattern:
 # Literal patterns
 literal_pattern:
     | signed_number  
-    | strings 
+    | string
     | 'None' 
     | 'True' 
     | 'False' 
@@ -462,7 +465,7 @@ literal_pattern:
 # Literal expressions are used to restrict permitted mapping pattern keys
 literal_expr:
     | signed_number 
-    | strings
+    | string
     | 'None' 
     | 'True' 
     | 'False' 
@@ -673,15 +676,15 @@ bitwise_and:
     | shift_expr bitwise_and_refactor
 
 bitwise_and_refactor:
-    | '&' shitf_expr bitwise_and_refactor
+    | '&' shift_expr bitwise_and_refactor
     | ε
 
 shift_expr:
-    | sum shitf_expr_refactor
+    | sum shift_expr_refactor
 
 shift_expr_refactor:
-    | '<<' sum shitf_expr_refactor
-    | '>>' sum shitf_expr_refactor
+    | '<<' sum shift_expr_refactor
+    | '>>' sum shift_expr_refactor
     | ε
 
 # Operaciones Aritmeticas
@@ -782,7 +785,12 @@ atom:
     | '...' 
 
 # TOKEN STRING
-string: STRING 
+string:
+    | STRING string_tail
+
+string_tail: 
+    | STRING string_tail 
+    | ε
 
 list:
     | '[' expressions ']' 
@@ -793,29 +801,33 @@ tuple:
 collection:
     | '{' dict_or_set '}'
 
-collection_content:
-    | kvpair kvpair_list_tail     # dict
-    | expression set_list_tail    # set
-    | ε    
+dict_or_set:
+    | ε
+    | expression dict_or_set_after_expr
 
-# Diccionario o set
+# Si después de la primera expression viene ':' => es un dict
+dict_or_set_after_expr:
+    | ':' expression kvpair_list_tail   # dict: primera expression es clave
+    | set_list_tail_after_first_expr    # set: primera expression forma el primer elemento
+
+# listas de pares clave:valor (dict)
 kvpair_list_tail:
     | ',' kvpair kvpair_list_tail
     | ε
 
-set_list_tail:
-    | ',' expression set_list_tail
-    | ε
+kvpair:
+    | expression ':' expression
 
+# listas de elementos (set) — la primera expression ya fue consumida
+set_list_tail_after_first_expr:
+    | ',' expression set_list_tail_after_first_expr
+    | ε
 
 # FUNCTION CALL ARGUMENTS
 
 
 arguments:
-    | arguments_refactor arguments_comma
-
-arguments_refactor:
-    | arg_list 
+    | arg_list arguments_comma
     | ε
 
 arguments_comma:
@@ -826,6 +838,7 @@ arguments_comma:
 arg_list:
     | positional_args arg_list_refactor
     | keyword_args
+
 arg_list_refactor:
     | ',' keyword_args
     | ε
@@ -843,10 +856,6 @@ positional_args_refactor:
 positional:
     | assignment_expression    
     | expression        
-
-keyword_args:
-    | kwarg (',' kwarg)*
-
 
 keyword_args:
     | kwarg keyword_args_refactor
@@ -922,7 +931,7 @@ t_primary:
 t_primary_refactor:
     | '.' NAME t_primary_refactor
     | '[' slices ']' t_primary_refactor
-    | '(' [arguments] ')' t_primary_refactor
+    | '(' arguments ')' t_primary_refactor
     | ε
 
 # ------------------- DEL STATEMENTS ----------------------
@@ -951,9 +960,12 @@ type_expressions:
 
 
 func_type_comment:
-    | NEWLINE TYPE_COMMENT &(NEWLINE INDENT)   
+    | NEWLINE TYPE_COMMENT func_type_comment_refactor  
     | TYPE_COMMENT
     | ε
 
+func_type_comment_refactor:
+    | NEWLINE INDENT
+    | ε
 
 ```bash
