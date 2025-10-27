@@ -23,15 +23,6 @@ statement:
     | compound_stmt
     | small_stmt_line
 
-compound_stmt:
-    | function_def
-    | if_stmt
-    | class_def
-    | for_stmt
-    | try_stmt
-    | while_stmt
-    | match_stmt
-
 small_stmt_line:
     | small_stmt_list NEWLINE
 
@@ -54,12 +45,8 @@ small_stmt:
     | continue_stmt
     | global_stmt
     | nonlocal_stmt
-<<<<<<< HEAD
     | assert_stmt
 
-=======
-    
->>>>>>> origin
 single_compound_stmt:        # Un statement compuesto solo, consta de un statement compuesto
     | compound_stmt 
 
