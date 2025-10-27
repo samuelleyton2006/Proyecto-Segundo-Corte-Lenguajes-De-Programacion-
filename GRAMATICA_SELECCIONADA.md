@@ -1,7 +1,13 @@
 ```bash
 # Un archivo consta de statements y un fin de archivo (ENDMARKER)
 
-file: [statements] ENDMARKER  
+file: file_refactor ENDMARKER  
+
+file_refactor:
+    | statements
+    | ε
+
+
 
 # Un archivo consta de statements y un fin de archivo (ENDMARKER)
 
@@ -280,10 +286,16 @@ class_def_raw_argument
 function_def:
     | function_def_raw 
 
-function_def_raw: # definicion de funciones normales def () y asincronicas ->
-    | 'def' NAME '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
-    | 'async' 'def' NAME '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
+function_def_raw:
+    | 'def' NAME '(' function_def_raw_refactor ')' function_def_raw_expression ':' func_type_comment block 
+    | 'async' 'def' NAME '(' function_def_raw_refactor ')' function_def_raw_expression ':' func_type_comment block
 
+function_def_raw_refactor:
+    | params
+    | ε
+function_def_raw_expression:
+    | '->' expression
+    | ε
 
 ### PARAMETROS DE FUNCIONES
 
@@ -763,7 +775,7 @@ atom:
     | 'None' 
     | string
     | NUMBER
-    | (tuple | group)
+    | tuple
     | list
     | dict
     | set
@@ -857,70 +869,91 @@ targets_tail:
     | ε    
 
 # Targets_list
-# ------------------- FALTA ESTO----------------------
 
-targets_list_seq: ','.single_target+ [','] 
-
-targets_tuple_seq:
-    | single_target (',' single_target )+ [','] 
-    | single_target ',' 
-
+targets_list_seq:
+    | single_target
+    | single_target ',' targets_list_seq
+    | single_target ','   
+#-----------------------------
+# Targets y trailers sin llamadas (para LL(1))
 
 target_with_atom:
-    | t_primary '.' NAME !t_lookahead 
-    | t_primary '[' slices ']' !t_lookahead 
     | atom_target
+    | atom noncall_trailer_seq
 
+# Secuencia de trailers permitidos en targets (no incluyen llamadas)
+noncall_trailer_seq:
+    | noncall_trailer noncall_trailer_seq
+    | ε
+
+noncall_trailer:
+    | '.' NAME
+    | '[' slices ']'
+
+# Secuencia de targets entre paréntesis (tuplas)
+targets_tuple_seq:
+    | single_target ',' single_target targets_tuple_seq_tail
+    | single_target ','
+
+targets_tuple_seq_tail:
+    | ',' single_target targets_tuple_seq_tail
+    | ε
+
+# Un target que puede ser un nombre, un atributo o un subíndice
 atom_target:
     | NAME 
-    | '(' target_with_atom ')' 
-    | '(' [targets_tuple_seq] ')' 
-    | '[' [targets_list_seq] ']' 
+    | '(' single_target ')' 
+    | '(' targets_tuple_seq ')' 
+    | '[' targets_list_seq ']'
 
+# Target individual (usado en asignaciones simples o anidadas)
 single_target:
     | single_subscript_attribute_target
     | NAME 
     | '(' single_target ')' 
 
 single_subscript_attribute_target:
-    | t_primary '.' NAME !t_lookahead 
-    | t_primary '[' slices ']' !t_lookahead 
+    | atom noncall_trailer_seq
 
+# Expresión primaria para expresiones normales (permite llamadas)
 t_primary:
     | atom t_primary_refactor
 
 t_primary_refactor:
     | '.' NAME t_primary_refactor
     | '[' slices ']' t_primary_refactor
-    | '(' [arguments] ')' t_primary_ractor
+    | '(' [arguments] ')' t_primary_refactor
     | ε
 
-t_lookahead: '(' | '[' | '.'
+# ------------------- DEL STATEMENTS ----------------------
 
-# Targets for del statements
+# Targets usados en sentencias 'del', separados por comas
+del_targets:
+    | del_target
+    | del_target ',' del_targets
+    | del_target ','
 
-del_targets: ','.del_target+ [','] 
-
+# Target individual dentro de 'del'
 del_target:
-    | t_primary '.' NAME !t_lookahead 
-    | t_primary '[' slices ']' !t_lookahead 
+    | atom noncall_trailer_seq
     | del_t_atom
 
 del_t_atom:
     | NAME 
     | '(' del_target ')' 
-    | '(' [del_targets] ')' 
-    | '[' [del_targets] ']' 
-
-
-# TYPING ELEMENTS
+    | '(' del_targets ')' 
+    | '[' del_targets ']' 
+# Lista de expresiones de tipo separadas por comas (ej. int, str, bool)
 type_expressions:
-    | ','.expression+ [',']  # lista de expresiones separadas por comas (ej. int, str, bool)
+    | expression
+    | expression ',' type_expressions
+    | expression ','  
+
 
 func_type_comment:
-    | NEWLINE TYPE_COMMENT &(NEWLINE INDENT)   # Must be followed by indented block
+    | NEWLINE TYPE_COMMENT &(NEWLINE INDENT)   
     | TYPE_COMMENT
-
+    | ε
 
 
 ```bash
