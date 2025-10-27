@@ -51,7 +51,7 @@ small_stmt:
     | global_stmt
     | nonlocal_stmt
     | assert_stmt
-    
+
 single_compound_stmt:        # Un statement compuesto solo, consta de un statement compuesto
     | compound_stmt 
 
@@ -105,22 +105,17 @@ target_assignment:
     | '(' single_target ')'
     | single_subscript_attribute_target
 
-
 assignment_after_target:
-    | ':' expression assignment_refactor     # annotated assignment
-    | '=' annotated_rhs type_comment          # simple / chained assignment
-    | augassign annotated_rhs
-    sda    
+    | ':' expression assignment_refactor          # annotated assignment
+    | '=' annotated_rhs type_comment               # simple / chained assignment
+    | augassign annotated_rhs                      # augmented assignment (unificada)
+
 assignment_refactor:
     | '=' annotated_rhs
     | ε
 
 chained_assignment:
     | assignment_chain annotated_rhs type_comment
-
-type_comment:
-    | TYPE_COMMENT
-    | ε
 
 assignment_chain:
     | targets '='
@@ -211,56 +206,38 @@ assert_stmt_expression:
 
 #------------------------ Import Statements
 import_stmt:
-    | import_name
-    | import_from
+    | 'import' import_tail
+    | 'from' from_import_tail
 
-import_name: 'import' dotted_as_names  # Importacion con comas (,) y paquetes (.) con AS de la regla dotted_as_name
+import_tail:
+    | dotted_as_names
 
-
-import_from:
-    | 'from' dots dotted_name 'import' import_from_targets
-    | 'from' dots_only 'import' import_from_targets
+from_import_tail:
+    | dots dotted_name_opt 'import' import_from_targets
 
 dots:
-    | dot dots_tail
-
-dots_tail:
-    | dot dots_tail
+    | dot dots
     | ε
-
-dots_only:
-    | dot dots_tail   
 
 dot:
     | '.'
     | '...'
 
-
-import_from_targets:
-    | '(' import_from_as_names_opt_trailing_comma ')' 
-    | import_from_as_names_no_trailing_comma
-    | '*'
-
-
-import_from_as_names_opt_trailing_comma:
-    | import_from_as_names
-    | import_from_as_names ','
-
-import_from_as_names_no_trailing_comma:
-    | import_from_as_name import_from_as_names_tail
-
-import_from_as_names:
-    | import_from_as_name import_from_as_names_tail
-
-import_from_as_names_tail:
-    | ',' import_from_as_name import_from_as_names_tail
+dotted_name_opt:
+    | dotted_name
     | ε
 
+dotted_name:
+    | NAME dotted_name_tail
 
-import_from_as_name:
-    | NAME import_from_as_name_tail
+dotted_name_tail:
+    | '.' NAME dotted_name_tail
+    | ε
 
-import_from_as_name_tail:
+dotted_as_name:
+    | dotted_name dotted_as_name_alias
+
+dotted_as_name_alias:
     | 'as' NAME
     | ε
 
@@ -271,20 +248,28 @@ dotted_as_names_tail:
     | ',' dotted_as_name dotted_as_names_tail
     | ε
 
-dotted_as_name:
-    | dotted_name dotted_as_name_tail
+import_from_targets:
+    | '(' import_from_as_names_opt ')'
+    | import_from_as_names
+    | '*'
 
-dotted_as_name_tail:
+import_from_as_names_opt:
+    | import_from_as_names
+    | ε
+
+import_from_as_names:
+    | import_from_as_name import_from_as_names_tail
+
+import_from_as_names_tail:
+    | ',' import_from_as_name import_from_as_names_tail
+    | ε
+
+import_from_as_name:
+    | NAME import_from_as_alias
+
+import_from_as_alias:
     | 'as' NAME
     | ε
-
-dotted_name:
-    | NAME dotted_name_tail
-
-dotted_name_tail:
-    | '.' NAME dotted_name_tail
-    | ε
-
 
 #------------------------ Statemet compuesto
 
