@@ -111,9 +111,8 @@ target_assignment:
 assignment_after_target:
     | ':' expression assignment_refactor     # annotated assignment
     | '=' annotated_rhs type_comment          # simple / chained assignment
-    | augassign annotated_rhs    
-
-
+    | augassign annotated_rhs
+    sda    
 assignment_refactor:
     | '=' annotated_rhs
     | ε
