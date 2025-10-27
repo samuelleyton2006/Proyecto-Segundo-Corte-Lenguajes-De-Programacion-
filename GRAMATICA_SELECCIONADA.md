@@ -19,10 +19,39 @@ statements_refactor:
     | statement statements_refactor
     | ε
 
-statement:                 # Un statement puede ser un statement compuesto o uno simple
-    | compound_stmt 
-    | simple_stmts 
+statement:
+    | compound_stmt
+    | small_stmt_line
 
+compound_stmt:
+    | if_stmt
+    | while_stmt
+    | for_stmt
+    | try_stmt
+    | with_stmt
+    | funcdef
+    | classdef
+    | match_stmt
+
+small_stmt_line:
+    | small_stmt_list NEWLINE
+
+small_stmt_list:
+    | small_stmt small_stmt_list_tail
+
+small_stmt_list_tail:
+    | ';' small_stmt small_stmt_list_tail
+    | ε
+
+small_stmt:
+    | expr_stmt
+    | import_stmt
+    | pass_stmt
+    | flow_stmt
+    | global_stmt
+    | nonlocal_stmt
+    | assert_stmt
+    
 single_compound_stmt:        # Un statement compuesto solo, consta de un statement compuesto
     | compound_stmt 
 
