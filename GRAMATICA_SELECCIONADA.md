@@ -13,10 +13,12 @@ file_refactor:
 
 
 
-statements: statement statements_refactor     # statements es un conjunto de uno o mas statement
+statements:
+    | statement statements_tail
+    | ε
 
-statements_refactor:
-    | statement statements_refactor
+statements_tail:
+    | NEWLINE statement statements_tail
     | ε
 
 statement:
@@ -24,50 +26,13 @@ statement:
     | small_stmt_line
 
 small_stmt_line:
-    | small_stmt_list NEWLINE
+    | small_stmt small_stmt_line_tail NEWLINE
 
-small_stmt_list:
-    | small_stmt small_stmt_list_tail
-
-small_stmt_list_tail:
-    | ';' small_stmt small_stmt_list_tail
+small_stmt_line_tail:
+    | ';' small_stmt small_stmt_line_tail
     | ε
 
 small_stmt:
-    | assignment
-    | return_stmt
-    | import_stmt
-    | raise_stmt
-    | pass_stmt
-    | del_stmt
-    | assert_stmt
-    | break_stmt
-    | continue_stmt
-    | global_stmt
-    | nonlocal_stmt
-    | assert_stmt
-
-single_compound_stmt:        # Un statement compuesto solo, consta de un statement compuesto
-    | compound_stmt 
-
-
-statement_newline:                    # Un statement con nueva linea es un statement compuesto solo seguido 
-                                      # de un salto de linea linea o un statement simple o una nueva linea o un
-    | single_compound_stmt NEWLINE    # fin de marcador
-    | simple_stmts
-    | ENDMARKER 
-
-
-simple_stmts:                          #
-    | simple_stmt_list NEWLINE
-    | simple_stmt_list ';' NEWLINE  
-    
-     
-simple_stmt_list:
-    | simple_stmt
-    | simple_stmt ';' simple_stmt_list
-
-simple_stmt:
     | assignment
     | return_stmt
     | import_stmt
