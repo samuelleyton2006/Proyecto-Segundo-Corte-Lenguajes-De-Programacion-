@@ -54,37 +54,37 @@ compound_stmt:
     | while_stmt
     | match_stmt
 
+    
+
 #-------------
 
 assignment:
-    | target_assignment assignment_after_target
+    | target_assignment assignment_suffix
 
 target_assignment:
     | NAME
     | '(' single_target ')'
     | single_subscript_attribute_target
 
-assignment_after_target:
-    | ':' expression assignment_refactor          # annotated assignment
-    | '=' annotated_rhs type_comment               # simple / chained assignment
-    | augassign annotated_rhs                      # augmented assignment (unificada)
+assignment_suffix:
+    | ':' expression annotated_assignment_opt       # Asignación anotada
+    | '=' assignment_chain annotated_rhs type_comment   # Asignación simple o encadenada
+    | augassign annotated_rhs                         # Asignación aumentada
+    | ε
 
-assignment_refactor:
+annotated_assignment_opt:
     | '=' annotated_rhs
     | ε
 
-chained_assignment:
-    | assignment_chain annotated_rhs type_comment
-
 assignment_chain:
-    | targets '='
-    | targets '=' assignment_chain
+    | target_assignment assignment_chain_tail
 
-augmented_assignment:
-    | single_target augassign annotated_rhs
+assignment_chain_tail:
+    | '=' target_assignment assignment_chain_tail
+    | ε
 
-
-annotated_rhs: expression
+annotated_rhs:
+    | expression
 
 augassign: # Operador de asignacion aumentada
     | '+=' 
@@ -233,10 +233,9 @@ import_from_as_alias:
 #------------------------ Statemet compuesto
 
 
-block: # Se usa para identacion de bloques, 
-    | NEWLINE INDENT statements DEDENT 
-    | simple_stmts
-
+block:
+    | NEWLINE INDENT statements DEDENT
+    | simple_stmt_line
 
 
 #-------------------------------- CLASES
@@ -304,21 +303,20 @@ param_default_opt:
 #### if statement
 
 if_stmt:
-    | 'if' named_expression ':' block elif_stmt  
-    | 'if' named_expression ':' block else_block
-elif_stmt:
-    | 'elif' named_expression ':' block elif_stmt 
-    | 'elif' named_expression ':' block else_block
-else_block:
+    | 'if' named_expression ':' block elif_else_part
+
+elif_else_part:
+    | 'elif' named_expression ':' block elif_else_part
     | 'else' ':' block
     | ε
 
-
 #### WHILE STATEMENT
 while_stmt:
-    | 'while' named_expression ':' block else_block
+    | 'while' named_expression ':' block while_else_part
 
-
+while_else_part:
+    | 'else' ':' block
+    | ε
 
 # For statement
 for_stmt:
