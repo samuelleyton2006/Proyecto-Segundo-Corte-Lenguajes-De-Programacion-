@@ -11,7 +11,6 @@ file_refactor:
 
 statements:
     | statement statements_tail
-    | ε
 
 statements_tail:
     | NEWLINE statement statements_tail
@@ -171,9 +170,12 @@ from_import_tail:
     | dots dotted_name_opt 'import' import_from_targets
 
 dots:
-    | dot dots
-    | ε
+    | dot dots_tail
+    | ε
 
+dots_tail:
+    | dot dots_tail
+    | ε
 dot:
     | '.'
     | '...'
@@ -228,7 +230,6 @@ import_from_as_alias:
 
 #------------------------ Statemet compuesto
 
-
 block:
     | NEWLINE INDENT statements DEDENT
     | simple_stmt_line
@@ -250,7 +251,6 @@ class_def_raw_argument:
     | arguments
     | ε
 
-
 #####  FUNCIONES
 
 function_def:
@@ -268,7 +268,6 @@ function_def_raw_expression:
     | ε
 
 ### PARAMETROS DE FUNCIONES
-
 
 params:
     | param param_list_rest
@@ -297,10 +296,10 @@ opt_default:
 #### if statement
 
 if_stmt:
-    | 'if' named_expression ':' block elif_else_part
+    | 'if' expression ':' block elif_else_part
 
 elif_else_part:
-    | 'elif' named_expression ':' block elif_else_part
+    | 'elif' expression ':' block elif_else_part
     | else_block
     | ε
 else_block:
@@ -308,7 +307,7 @@ else_block:
 
 #### WHILE STATEMENT
 while_stmt:
-    | 'while' named_expression ':' block while_else_part
+    | 'while' expression ':' block while_else_part
 
 while_else_part:
     | 'else' ':' block
@@ -321,10 +320,6 @@ for_stmt:
 for_prefix:
     | 'for'
     | 'async' 'for'
-
-
-
-
 
 # Try statement
 try_stmt:
@@ -370,10 +365,10 @@ match_stmt:
 
 
 subject_expr:
-    | named_expression subject_expr_tail
+    | expression subject_expr_tail
 
 subject_expr_tail:
-    | ',' named_expression subject_expr_tail_opt_comma
+    | ',' expression subject_expr_tail_opt_comma
     | ε
 
 subject_expr_tail_opt_comma:
@@ -396,7 +391,7 @@ guard_opt:
     | ε
 
 guard:
-    | 'if' named_expression
+    | 'if' expression
 
 #------------------- PATRONES-------------------------------------
 patterns:
@@ -465,12 +460,20 @@ pattern_capture_target:
 value_pattern:
     | attr 
 
-attr:
-    | name_or_attr '.' NAME  # Para hacer matching de valores como atributos
+
 
 name_or_attr:
-    | attr
-    | NAME
+    | NAME attr_trail
+
+attr:
+    | NAME attr_trail_noempty  # Para hacer matching de valores como atributos
+attr_tail:
+    | '.' NAME attr_tail
+    | ε
+
+attr_tail_nonempty:
+    | '.' NAME attr_tail
+
 
 group_pattern:
     | '(' pattern ')'  # acepta parentesis para agrupar
@@ -543,10 +546,6 @@ first_pattern:
 keyword_pattern:
     | NAME '=' pattern
 
-
-
-
-
 # EXPRESSIONS
 
 expressions:
@@ -567,11 +566,6 @@ expression:
 expression_tail:
     | 'if' disjunction 'else' expression
     | ε
-
-named_expression:
-    | NAME ':=' expression   # si el siguiente token es ':='
-    | expression
-
 
 disjunction:
     | conjunction disjunction_tail
@@ -643,7 +637,6 @@ bitwise_or_refactor:
     | '|' bitwise_xor bitwise_or_refactor
     | ε
 
-
 bitwise_xor:
     | bitwise_and bitwise_xor_refactor
 
@@ -669,7 +662,6 @@ shift_expr_refactor:
 
 # Operaciones Aritmeticas
 
-
 sum:
     | term sum_tail
 
@@ -677,7 +669,6 @@ sum_tail:
     | '+' term sum_tail
     | '-' term sum_tail
     | ε
-
 
 term:
     | factor term_tail
@@ -702,11 +693,7 @@ power:
     | await_primary '**' factor 
     | await_primary
 
-
 # Elementos primarios (Atributos,metodos)
-
-
-
 
 await_primary:
     | 'await' primary
@@ -728,7 +715,6 @@ arguments_opt:
     | arguments
     | ε
 
-
 slices:
     | slice slices_tail
 
@@ -738,10 +724,15 @@ slices_tail:
 
 slice:
     | slice_index
-    | named_expression
+
 
 slice_index:
-    | expression_opt ':' expression_opt slice_step_opt
+    | ':' expression_opt slice_step_opt       
+    | expression slice_continuation 
+
+slice_continuation:
+    | ':' expression_opt slice_step_opt      
+    | ε    
 
 expression_opt:
     | expression
@@ -750,7 +741,6 @@ expression_opt:
 slice_step_opt:
     | ':' expression_opt
     | ε
-
 
 atom:
     | NAME
@@ -806,8 +796,6 @@ trailing_comma_opt:
     | ','
     | ε
 
-
-
 # FUNCTION CALL ARGUMENTS
 
 
@@ -819,7 +807,6 @@ arguments_comma:
     | ','
     | ε
 
-
 arg_list:
     | positional_args arg_list_refactor
     | keyword_args
@@ -827,10 +814,6 @@ arg_list:
 arg_list_refactor:
     | ',' keyword_args
     | ε
-
-
-
-
 
 positional:
     | expression
@@ -896,11 +879,17 @@ atom_target:
 
 # Target individual (usado en asignaciones simples o anidadas)
 single_target:
-    | single_target_simple noncall_trailer_seq_opt
-    | '(' single_target ')'
-    | '(' targets_tuple_seq ')'
-    | '[' targets_list_seq ']'
-    
+    | single_target_simple noncall_trailer_seq_opt
+    | '[' targets_list_seq ']'
+    | '(' single_target_parenthesized ')'
+
+single_target_parenthesized:
+    | single_target target_parens_tail
+
+target_parens_tail:
+    | ',' targets_tuple_seq_rest  
+    | ε
+
 single_target_simple:
     | NAME
 single_subscript_attribute_target:
@@ -924,8 +913,6 @@ t_primary_refactor:
     | '(' arguments ')' t_primary_refactor
     | ε
 
-# ------------------- DEL STATEMENTS ----------------------
-
 del_targets:
     | del_target del_targets_tail
 del_targets_tail:
@@ -933,19 +920,22 @@ del_targets_tail:
     | ε
 del_target:
     | NAME noncall_trailer_seq_opt
-    | '(' del_targets_opt_trailing ')' noncall_trailer_seq_opt
+    | '(' del_target_parenthesized ')' noncall_trailer_seq_opt
     | '[' del_targets_opt_trailing ']' noncall_trailer_seq_opt
+
+del_target_parenthesized:
+    | del_target del_target_parens_tail
+
+del_target_parens_tail:
+    | ',' del_targets_opt_trailing 
+    | ε
+
 del_targets_opt_trailing:
     | del_targets trailing_comma_opt
     | ε
 trailing_comma_opt:
     | ','
     | ε
-
-
-
-
-# Lista de expresiones de tipo separadas por comas (ej. int, str, bool)
 type_expressions:
     | expression type_expressions_tail
 
