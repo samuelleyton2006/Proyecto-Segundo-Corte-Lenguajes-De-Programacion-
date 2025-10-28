@@ -9,10 +9,6 @@ file_refactor:
 
 
 
-# Un archivo consta de statements y un fin de archivo (ENDMARKER)
-
-
-
 statements:
     | statement statements_tail
     | ε
@@ -62,9 +58,7 @@ assignment:
     | target_assignment assignment_suffix
 
 target_assignment:
-    | NAME
-    | '(' single_target ')'
-    | single_subscript_attribute_target
+    | single_target
 
 assignment_suffix:
     | ':' expression annotated_assignment_opt       # Asignación anotada
@@ -892,8 +886,10 @@ single_target:
     | '(' single_target ')' 
 
 single_subscript_attribute_target:
-    | atom noncall_trailer_seq
-
+    | atom noncall_trailer_seq_nonempty
+    
+noncall_trailer_seq_nonempty:
+    | noncall_trailer noncall_trailer_seq  # Al menos uno, luego opcionales
 # Expresión primaria para expresiones normales (permite llamadas)
 t_primary:
     | atom t_primary_refactor
