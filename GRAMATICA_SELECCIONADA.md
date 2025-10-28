@@ -839,18 +839,18 @@ arg_list_refactor:
 
 
 
+
+
+positional:
+    | expression
+
 positional_args:
     | positional positional_args_refactor
 
 positional_args_refactor:
     | ',' positional positional_args_refactor
     | ε
-
-
-positional:
-    | assignment_expression    
-    | expression        
-
+    
 keyword_args:
     | kwarg keyword_args_refactor
 
