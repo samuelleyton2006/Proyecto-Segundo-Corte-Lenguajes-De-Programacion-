@@ -62,7 +62,7 @@ target_assignment:
 
 assignment_suffix:
     | ':' expression annotated_assignment_opt       # Asignación anotada
-    | '=' assignment_chain annotated_rhs type_comment   # Asignación simple o encadenada
+    | '=' assignment_chain annotated_rhs type_comment  # Asignación simple o encadenada
     | augassign annotated_rhs                         # Asignación aumentada
     | ε
 
@@ -272,7 +272,7 @@ function_def_raw_expression:
 params:
     | ε
     | param_list
-    | param_list ','
+
 
 
 param_list:
@@ -301,8 +301,10 @@ if_stmt:
 
 elif_else_part:
     | 'elif' named_expression ':' block elif_else_part
-    | 'else' ':' block
+    | else_block
     | ε
+else_block:
+    | 'else' ':' block 
 
 #### WHILE STATEMENT
 while_stmt:
@@ -887,7 +889,7 @@ single_target:
 
 single_subscript_attribute_target:
     | atom noncall_trailer_seq_nonempty
-    
+
 noncall_trailer_seq_nonempty:
     | noncall_trailer noncall_trailer_seq  # Al menos uno, luego opcionales
 # Expresión primaria para expresiones normales (permite llamadas)
@@ -904,11 +906,13 @@ t_primary_refactor:
 
 # Targets usados en sentencias 'del', separados por comas
 del_targets:
-    | del_target
-    | del_target ',' del_targets
-    | del_target ','
+    | del_target del_targets_tail
 
 # Target individual dentro de 'del'
+
+del_targets_tail:
+    | ',' del_target del_targets_tail
+    | ε
 del_target:
     | atom noncall_trailer_seq
     | del_t_atom
@@ -926,12 +930,15 @@ type_expressions:
 
 
 func_type_comment:
-    | NEWLINE TYPE_COMMENT func_type_comment_refactor  
+    | NEWLINE type_comment func_type_comment_refactor  
     | TYPE_COMMENT
     | ε
 
 func_type_comment_refactor:
     | NEWLINE INDENT
+    | ε
+type_comment:
+    | TYPE_COMMENT
     | ε
 
 ```bash
