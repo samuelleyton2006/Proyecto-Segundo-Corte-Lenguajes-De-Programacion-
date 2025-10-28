@@ -267,11 +267,9 @@ function_def_raw_expression:
 ### PARAMETROS DE FUNCIONES
 
 
-
 params:
+    | param param_list_rest
     | ε
-    | param_list
-
 
 
 param_list:
@@ -476,7 +474,6 @@ pattern_list_opt:
 
 pattern_list_rest:
     | ',' pattern pattern_list_rest
-    | ',' 
     | ε
 
 # Mapeo para match y case
@@ -542,10 +539,12 @@ expressions:
     | expression expressions_tail
 
 expressions_tail:
-    | ',' expression expressions_tail
-    | ','   
+    | ',' expressions_tail_after_comma
     | ε
 
+expressions_tail_after_comma:
+    | expression expressions_tail
+    | ε
 
 
 expression:
@@ -560,7 +559,7 @@ assignment_expression:
     | NAME ':=' expression
 
 named_expression:
-    | assignment_expression
+    | NAME ':=' expression   # si el siguiente token es ':='
     | expression
 
 
@@ -699,11 +698,10 @@ power:
 
 
 
-
 await_primary:
     | 'await' primary
-    | atom trailer_seq
-
+    | primary
+    
 primary:
     | atom trailer_seq
 
@@ -876,11 +874,13 @@ atom_target:
 
 # Target individual (usado en asignaciones simples o anidadas)
 single_target:
-    | NAME noncall_trailer_seq_opt
+    | single_target_simple noncall_trailer_seq_opt
     | '(' single_target ')'
     | '(' targets_tuple_seq ')'
     | '[' targets_list_seq ']'
-
+    
+single_target_simple:
+    | NAME
 single_subscript_attribute_target:
     | atom noncall_trailer_seq_nonempty
 
@@ -904,24 +904,25 @@ t_primary_refactor:
 
 # ------------------- DEL STATEMENTS ----------------------
 
-# Targets usados en sentencias 'del', separados por comas
 del_targets:
     | del_target del_targets_tail
-
-# Target individual dentro de 'del'
-
 del_targets_tail:
     | ',' del_target del_targets_tail
     | ε
 del_target:
-    | atom noncall_trailer_seq_opt
-    | del_t_atom
+    | NAME noncall_trailer_seq_opt
+    | '(' del_targets_opt_trailing ')' noncall_trailer_seq_opt
+    | '[' del_targets_opt_trailing ']' noncall_trailer_seq_opt
+del_targets_opt_trailing:
+    | del_targets trailing_comma_opt
+    | ε
+trailing_comma_opt:
+    | ','
+    | ε
 
-del_t_atom:
-    | NAME 
-    | '(' del_target ')' 
-    | '(' del_targets ')' 
-    | '[' del_targets ']' 
+
+
+
 # Lista de expresiones de tipo separadas por comas (ej. int, str, bool)
 type_expressions:
     | expression
