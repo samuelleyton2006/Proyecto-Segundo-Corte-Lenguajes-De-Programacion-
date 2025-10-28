@@ -104,8 +104,11 @@ return_stmt_expression:
     | expression
     | ε
 raise_stmt:
-    | 'raise' expression from_expression  # Generar un error con un from
-    | 'raise'  # Re lanzar la excepción activa dentro de un bloque except
+    | 'raise' raise_stmt_tail
+
+raise_stmt_tail:
+    | expression from_expression
+    | ε
 
 from_expression:
     | 'from' expression
@@ -342,10 +345,18 @@ except_block:
     | 'except' except_header ':' block
 
 except_header:
-    | expression 'as' NAME
-    | expression
-    | expressions
+    | expression except_header_as_or_comma
     | ε
+
+except_header_as_or_comma:
+    | 'as' NAME
+    | ',' expression except_header_rest
+    | ε
+
+except_header_rest:
+    | ',' expression except_header_rest
+    | ε
+
 
 finally_block:
     | 'finally' ':' block
@@ -483,9 +494,12 @@ mapping_pattern:
     | '{' mapping_items '}'
 
 mapping_items:
+    | key_value_list trailing_comma_opt
     | ε
-    | key_value_list
-    | key_value_list ','
+
+trailing_comma_opt:
+    | ','
+    | ε
 
 key_value_list:
     | key_value_pair key_value_list_tail
@@ -504,33 +518,33 @@ class_pattern:
 
 class_pattern_body:
     | ε
-    | positional_patterns class_pattern_body_rest
-    | keyword_patterns class_pattern_body_comma_opt
+    | first_pattern class_pattern_body_continuation
 
-class_pattern_body_rest:
-    | ',' keyword_patterns class_pattern_body_comma_opt
-    | class_pattern_body_comma_opt
-
-class_pattern_body_comma_opt:
-    | ','
+class_pattern_body_continuation:
+    | '=' pattern keyword_mode
+    | ',' class_pattern_body_after_comma
     | ε
 
-positional_patterns:
-    | pattern positional_patterns_tail
-
-positional_patterns_tail:
-    | ',' pattern positional_patterns_tail
+class_pattern_body_after_comma:
+    | first_pattern class_pattern_body_continuation
     | ε
 
-keyword_patterns:
-    | keyword_pattern keyword_patterns_tail
-
-keyword_patterns_tail:
-    | ',' keyword_pattern keyword_patterns_tail
+keyword_mode:
+    | ',' keyword_pattern keyword_mode_rest
     | ε
+
+keyword_mode_rest:
+    | ',' keyword_pattern keyword_mode_rest
+    | ε
+
+first_pattern:
+    | pattern
 
 keyword_pattern:
     | NAME '=' pattern
+
+
+
 
 
 # EXPRESSIONS
@@ -751,8 +765,7 @@ atom:
     | NUMBER
     | tuple
     | list
-    | dict
-    | set
+    | collection
     | '...' 
 
 # TOKEN STRING
@@ -764,10 +777,14 @@ string_tail:
     | ε
 
 list:
-    | '[' expressions ']' 
+    | '[' expressions_opt ']' 
 
 tuple:
-    | '(' expressions ')' 
+    | '(' expressions_opt ')' 
+
+expressions_opt:
+    | expressions
+    | ε
 
 collection:
     | '{' dict_or_set '}'
@@ -783,7 +800,10 @@ dict_or_set_after_expr:
 
 # listas de pares clave:valor (dict)
 kvpair_list_tail:
-    | ',' kvpair kvpair_list_tail
+    | ',' kvpair_list_continuation
+
+kvpair_list_continuation:
+    | kvpair kvpair_list_tail
     | ε
 
 kvpair:
@@ -791,7 +811,10 @@ kvpair:
 
 # listas de elementos (set) — la primera expression ya fue consumida
 set_list_tail_after_first_expr:
-    | ',' expression set_list_tail_after_first_expr
+    | ',' set_list_continuation
+
+set_list_continuation:
+    | expression set_list_tail_after_first_expr
     | ε
 
 # FUNCTION CALL ARGUMENTS
@@ -844,23 +867,31 @@ targets:
     | single_target targets_tail
 
 targets_tail:
-    | ',' single_target targets_tail
-    | ',' 
-    | ε    
+    | ',' targets_tail_after_comma
+    | ε
+
+targets_tail_after_comma:
+    | single_target targets_tail
+    | ε
 
 # Targets_list
 
 targets_list_seq:
-    | single_target
-    | single_target ',' targets_list_seq
-    | single_target ','   
+    | single_target targets_list_seq_tail
 
+targets_list_seq_tail:
+    | ',' targets_list_seq
+    | ','
+    | ε
 
 # Secuencia de targets entre paréntesis (tuplas)
 targets_tuple_seq:
-    | single_target ',' single_target targets_tuple_seq_tail
-    | single_target ','
+    | single_target ',' targets_tuple_seq_rest
 
+targets_tuple_seq_rest:
+    | single_target targets_tuple_seq_tail
+    | ε
+    
 targets_tuple_seq_tail:
     | ',' single_target targets_tuple_seq_tail
     | ε
@@ -925,10 +956,12 @@ trailing_comma_opt:
 
 # Lista de expresiones de tipo separadas por comas (ej. int, str, bool)
 type_expressions:
-    | expression
-    | expression ',' type_expressions
-    | expression ','  
+    | expression type_expressions_tail
 
+type_expressions_tail:
+    | ',' type_expressions
+    | ','
+    | ε
 
 func_type_comment:
     | NEWLINE type_comment func_type_comment_refactor  
