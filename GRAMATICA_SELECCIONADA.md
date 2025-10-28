@@ -568,10 +568,6 @@ expression_tail:
     | 'if' disjunction 'else' expression
     | ε
 
-
-assignment_expression:
-    | NAME ':=' expression
-
 named_expression:
     | NAME ':=' expression   # si el siguiente token es ':='
     | expression
@@ -787,18 +783,15 @@ expressions_opt:
     | ε
 
 collection:
-    | '{' dict_or_set '}'
+    | '{' dict_items '}'
 
-dict_or_set:
+dict_items:
+    | kvpair_list trailing_comma_opt
     | ε
-    | expression dict_or_set_after_expr
 
-# Si después de la primera expression viene ':' => es un dict
-dict_or_set_after_expr:
-    | ':' expression kvpair_list_tail   # dict: primera expression es clave
-    | set_list_tail_after_first_expr    # set: primera expression forma el primer elemento
+kvpair_list:
+    | kvpair kvpair_list_tail
 
-# listas de pares clave:valor (dict)
 kvpair_list_tail:
     | ',' kvpair_list_continuation
 
@@ -809,13 +802,11 @@ kvpair_list_continuation:
 kvpair:
     | expression ':' expression
 
-# listas de elementos (set) — la primera expression ya fue consumida
-set_list_tail_after_first_expr:
-    | ',' set_list_continuation
-
-set_list_continuation:
-    | expression set_list_tail_after_first_expr
+trailing_comma_opt:
+    | ','
     | ε
+
+
 
 # FUNCTION CALL ARGUMENTS
 
