@@ -689,18 +689,12 @@ factor:
 power:
     | await_primary power_tail 
 
-<<<<<<< HEAD:GRAMATICA_SELECCIONADA.txt
-
 =======
 power_tail:
     | '**' factor      
     | ε
->>>>>>> origin:GRAMATICA_SELECCIONADA.md
+
 # Elementos primarios (Atributos,metodos)
-
-
-
-
 
 await_primary:
     | 'await' primary

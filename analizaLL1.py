@@ -1,125 +1,178 @@
-import re
+# -----------------------------------------------
+# ANALIZADOR LL(1) - Cálculo de FIRST, FOLLOW y Tabla de Predicción
+# -----------------------------------------------
+
 from collections import defaultdict
 
-# --- PARTE 1: Leer gramática desde archivo ---
-def parse_grammar(path):
+# -----------------------------------------------
+# Funciones principales
+# -----------------------------------------------
+
+def parse_grammar(file_path):
     grammar = defaultdict(list)
-    current_nonterminal = None
-    with open(path, encoding="utf-8") as f:
-        for line in f:
+    non_terminals = set()
+    with open(file_path, "r", encoding="utf-8") as file:
+        for line in file:
             line = line.strip()
-            if not line or line.startswith("#"):  # ignorar comentarios y líneas vacías
+            if not line or line.startswith("#"):
                 continue
-
-            # detectar nueva regla
             if ":" in line:
-                current_nonterminal = line.split(":")[0].strip()
-                rest = line.split(":", 1)[1].strip()
-                if rest:
-                    production = rest.replace("|", "").strip()
-                    grammar[current_nonterminal].append(production.split())
-            elif line.startswith("|"):
-                if current_nonterminal is None:
-                    continue
-                production = line.replace("|", "").strip()
-                if production == "ε":
-                    grammar[current_nonterminal].append(["ε"])
-                elif production:
-                    grammar[current_nonterminal].append(production.split())
-                else:
-                    grammar[current_nonterminal].append(["ε"])
-    return grammar
+                head, prods = line.split(":", 1)
+                head = head.strip()
+                non_terminals.add(head)
+                for prod in prods.split("|"):
+                    grammar[head].append(prod.strip().split())
+    return grammar, non_terminals
 
-# --- PARTE 2: Calcular FIRST ---
+
+# -----------------------------------------------
+# FIRST
+# -----------------------------------------------
+
 def compute_first(symbol, grammar, FIRST, non_terminals):
+    # Si ya fue calculado
+    if symbol in FIRST and FIRST[symbol]:
+        return FIRST[symbol]
+
+    first = set()
+
+    # Si es terminal
     if symbol not in non_terminals:
-        return {symbol}
+        first.add(symbol)
+        FIRST[symbol] = first
+        return first
+
+    # Si es no terminal
     for production in grammar[symbol]:
         for sym in production:
-            first_set = compute_first(sym, grammar, FIRST, non_terminals)
-            FIRST[symbol].update(first_set - {"ε"})
-            if "ε" not in first_set:
+            sym_first = compute_first(sym, grammar, FIRST, non_terminals)
+            first |= (sym_first - {'ε'})
+            if 'ε' not in sym_first:
                 break
         else:
-            FIRST[symbol].add("ε")
-    return FIRST[symbol]
+            first.add('ε')
 
-# --- PARTE 3: Calcular FOLLOW ---
+    FIRST[symbol] = first
+    return first
+
+
+# -----------------------------------------------
+# FOLLOW (versión corregida)
+# -----------------------------------------------
+
 def compute_follow(grammar, FIRST, non_terminals, start_symbol):
-    FOLLOW = defaultdict(set)
-    FOLLOW[start_symbol].add("$")
+    FOLLOW = {nt: set() for nt in non_terminals}
+    FOLLOW[start_symbol].add('$')  # Fin de entrada
+
     changed = True
     while changed:
         changed = False
-        for A in grammar:
-            for production in grammar[A]:
-                for i, B in enumerate(production):
-                    if B in non_terminals:
-                        beta = production[i + 1:]
-                        if beta:
-                            first_beta = set()
-                            for sym in beta:
-                                first_beta |= (FIRST[sym] - {"ε"})
-                                if "ε" not in FIRST[sym]:
+        for left, productions in grammar.items():
+            for prod in productions:
+                for i, sym in enumerate(prod):
+                    if sym in non_terminals:
+                        follow_before = len(FOLLOW[sym])
+                        next_symbols = prod[i + 1:]
+
+                        if next_symbols:
+                            first_next = set()
+                            for s in next_symbols:
+                                # Manejo seguro: si no está en FIRST, se considera terminal
+                                if s in FIRST:
+                                    first_next |= (FIRST[s] - {'ε'})
+                                else:
+                                    first_next.add(s)
+
+                                if s not in FIRST or 'ε' not in FIRST[s]:
                                     break
                             else:
-                                first_beta.add("ε")
-                            old = len(FOLLOW[B])
-                            FOLLOW[B].update(first_beta - {"ε"})
-                            if "ε" in first_beta:
-                                FOLLOW[B].update(FOLLOW[A])
-                            if len(FOLLOW[B]) != old:
-                                changed = True
+                                first_next.add('ε')
+
+                            FOLLOW[sym] |= (first_next - {'ε'})
+                            if 'ε' in first_next:
+                                FOLLOW[sym] |= FOLLOW[left]
                         else:
-                            old = len(FOLLOW[B])
-                            FOLLOW[B].update(FOLLOW[A])
-                            if len(FOLLOW[B]) != old:
-                                changed = True
+                            FOLLOW[sym] |= FOLLOW[left]
+
+                        if len(FOLLOW[sym]) > follow_before:
+                            changed = True
     return FOLLOW
 
-# --- PARTE 4: Verificar conflictos LL(1) ---
-def check_ll1(grammar, FIRST, FOLLOW):
-    print("\n=== VERIFICACIÓN LL(1) ===")
-    for A, prods in grammar.items():
-        seen = []
-        for i, alpha in enumerate(prods):
-            first_alpha = set()
-            for sym in alpha:
-                first_alpha |= (FIRST[sym] - {"ε"})
-                if "ε" not in FIRST[sym]:
+
+# -----------------------------------------------
+# TABLA LL(1)
+# -----------------------------------------------
+
+def build_ll1_table(grammar, FIRST, FOLLOW):
+    table = defaultdict(dict)
+    for nt, productions in grammar.items():
+        for prod in productions:
+            first_set = set()
+            for sym in prod:
+                if sym in FIRST:
+                    first_set |= (FIRST[sym] - {'ε'})
+                else:
+                    first_set.add(sym)
+                if 'ε' not in FIRST.get(sym, set()):
                     break
             else:
-                first_alpha.add("ε")
-            for prev in seen:
-                if not first_alpha.isdisjoint(prev):
-                    print(f"[⚠️ Solapamiento] {A} → {' '.join(alpha)} tiene intersección con otra producción FIRST.")
-            seen.append(first_alpha)
-            if "ε" in first_alpha:
-                if not FIRST[A].isdisjoint(FOLLOW[A]):
-                    print(f"[⚠️ Epsilon conflicto] {A}: FIRST y FOLLOW se solapan.")
-    print("Verificación completa.\n")
+                first_set.add('ε')
 
-# --- PARTE 5: Ejecutar todo ---
+            for terminal in first_set - {'ε'}:
+                if terminal in table[nt]:
+                    print(f"⚠️ Solapamiento en {nt} con '{terminal}' → {table[nt][terminal]} y {prod}")
+                table[nt][terminal] = prod
+
+            if 'ε' in first_set:
+                for terminal in FOLLOW[nt]:
+                    if terminal in table[nt]:
+                        print(f"⚠️ Solapamiento en {nt} con '{terminal}' → {table[nt][terminal]} y {prod}")
+                    table[nt][terminal] = prod
+    return table
+
+
+# -----------------------------------------------
+# IMPRESIÓN
+# -----------------------------------------------
+
+def print_sets(FIRST, FOLLOW):
+    print("\n===== CONJUNTOS FIRST =====")
+    for nt, s in FIRST.items():
+        print(f"{nt}: {s}")
+
+    print("\n===== CONJUNTOS FOLLOW =====")
+    for nt, s in FOLLOW.items():
+        print(f"{nt}: {s}")
+
+
+def print_ll1_table(table):
+    print("\n===== TABLA LL(1) =====")
+    for nt, row in table.items():
+        print(f"\n{nt}:")
+        for terminal, prod in row.items():
+            print(f"   {terminal} → {' '.join(prod)}")
+
+
+# -----------------------------------------------
+# MAIN
+# -----------------------------------------------
+
 def main():
-    path = "GRAMATICA_SELECCIONADA.txt"  # cambia por el nombre de tu archivo
-    grammar = parse_grammar(path)
-    non_terminals = list(grammar.keys())
+    grammar_file = "GRAMATICA_SELECCIONADA.txt"  # Asegúrate de tenerla en el mismo directorio
+    grammar, non_terminals = parse_grammar(grammar_file)
 
-    FIRST = defaultdict(set)
+    FIRST = {nt: set() for nt in non_terminals}
     for nt in non_terminals:
         compute_first(nt, grammar, FIRST, non_terminals)
 
-    FOLLOW = compute_follow(grammar, FIRST, non_terminals, start_symbol=non_terminals[0])
+    start_symbol = next(iter(grammar))  # primer símbolo como inicio
+    FOLLOW = compute_follow(grammar, FIRST, non_terminals, start_symbol)
 
-    print("\n=== CONJUNTOS FIRST ===")
-    for nt in non_terminals:
-        print(f"FIRST({nt}) = {FIRST[nt]}")
+    print_sets(FIRST, FOLLOW)
 
-    print("\n=== CONJUNTOS FOLLOW ===")
-    for nt in non_terminals:
-        print(f"FOLLOW({nt}) = {FOLLOW[nt]}")
+    table = build_ll1_table(grammar, FIRST, FOLLOW)
+    print_ll1_table(table)
 
-    check_ll1(grammar, FIRST, FOLLOW)
 
 if __name__ == "__main__":
     main()
