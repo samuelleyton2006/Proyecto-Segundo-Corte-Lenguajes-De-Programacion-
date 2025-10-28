@@ -55,16 +55,15 @@ compound_stmt:
 #-------------
 
 assignment:
-    | target_assignment assignment_suffix
+    | target_assignment assignment_suffix type_comment
 
 target_assignment:
     | single_target
 
 assignment_suffix:
     | ':' expression annotated_assignment_opt       # Asignación anotada
-    | '=' assignment_chain annotated_rhs type_comment  # Asignación simple o encadenada
+    | '=' assignment_chain annotated_rhs  # Asignación simple o encadenada
     | augassign annotated_rhs                         # Asignación aumentada
-    | ε
 
 annotated_assignment_opt:
     | '=' annotated_rhs
@@ -286,11 +285,11 @@ param:
     | NAME param_tail
 
 param_tail:
-    | ':' expression param_default_opt
+    | ':' expression opt_default
     | '=' expression
     | ε
 
-param_default_opt:
+opt_default:
     | '=' expression
     | ε
 
@@ -683,11 +682,13 @@ term_tail:
     | ε
 
 factor:
-    | '+' factor 
-    | '-' factor 
-    | '~' factor 
-    | power
+    | factor_tail power
 
+factor_tail:
+    | '+' factor_tail
+    | '-' factor_tail
+    | '~' factor_tail
+    | ε
 power:
     | await_primary '**' factor 
     | await_primary
@@ -707,10 +708,10 @@ primary:
     | atom trailer_seq
 
 trailer_seq:
-    | trailer trailer_seq
+    | trailer_primary trailer_seq
     | ε
 
-trailer:
+trailer_primary:
     | '.' NAME
     | '(' arguments_opt ')'
     | '[' slices ']'
@@ -855,21 +856,7 @@ targets_list_seq:
     | single_target
     | single_target ',' targets_list_seq
     | single_target ','   
-#-----------------------------
-# Targets y trailers sin llamadas (para LL(1))
 
-target_with_atom:
-    | atom_target
-    | atom noncall_trailer_seq
-
-# Secuencia de trailers permitidos en targets (no incluyen llamadas)
-noncall_trailer_seq:
-    | noncall_trailer noncall_trailer_seq
-    | ε
-
-noncall_trailer:
-    | '.' NAME
-    | '[' slices ']'
 
 # Secuencia de targets entre paréntesis (tuplas)
 targets_tuple_seq:
@@ -889,16 +876,23 @@ atom_target:
 
 # Target individual (usado en asignaciones simples o anidadas)
 single_target:
-    | single_subscript_attribute_target
-    | NAME 
-    | '(' single_target ')' 
+    | NAME noncall_trailer_seq_opt
+    | '(' single_target ')'
+    | '(' targets_tuple_seq ')'
+    | '[' targets_list_seq ']'
 
 single_subscript_attribute_target:
     | atom noncall_trailer_seq_nonempty
 
 noncall_trailer_seq_nonempty:
-    | noncall_trailer noncall_trailer_seq  # Al menos uno, luego opcionales
-# Expresión primaria para expresiones normales (permite llamadas)
+    | noncall_trailer noncall_trailer_seq_opt
+
+noncall_trailer_seq_opt:
+    | noncall_trailer noncall_trailer_seq_opt
+    | ε
+noncall_trailer:
+    | '.' NAME
+    | '[' slices ']'
 t_primary:
     | atom t_primary_refactor
 
@@ -920,7 +914,7 @@ del_targets_tail:
     | ',' del_target del_targets_tail
     | ε
 del_target:
-    | atom noncall_trailer_seq
+    | atom noncall_trailer_seq_opt
     | del_t_atom
 
 del_t_atom:
