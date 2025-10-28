@@ -686,9 +686,11 @@ unary_operator:
     | '-'
     | '~'
 power:
-    | await_primary '**' factor 
-    | await_primary
+    | await_primary power_tail 
 
+power_tail:
+    | '**' factor      
+    | ε
 # Elementos primarios (Atributos,metodos)
 
 await_primary:
@@ -804,11 +806,15 @@ arguments_comma:
     | ε
 
 arg_list:
-    | positional_args arg_list_refactor
-    | keyword_args
+    | argument_item arg_list_tail
+    | ε 
 
-arg_list_refactor:
-    | ',' keyword_args
+argument_item:
+    | NAME '=' expression 
+    | expression
+
+arg_list_tail:
+    | ',' argument_item arg_list_tail
     | ε
 
 positional:
