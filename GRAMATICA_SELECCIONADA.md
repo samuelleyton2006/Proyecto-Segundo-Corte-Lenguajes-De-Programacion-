@@ -54,30 +54,26 @@ compound_stmt:
 #-------------
 
 assignment:
-    | target_assignment assignment_suffix type_comment
+    | single_target assignment_options type_comment
 
-target_assignment:
-    | single_target
+assignment_options:
+    | ':' expression annotated_assignment_opt       
+    | '=' single_target_chain_tail annotated_rhs 
+    | augassign annotated_rhs                         
 
-assignment_suffix:
-    | ':' expression annotated_assignment_opt       # Asignación anotada
-    | '=' assignment_chain annotated_rhs  # Asignación simple o encadenada
-    | augassign annotated_rhs                         # Asignación aumentada
-
+single_target_chain_tail:
+    | '=' single_target single_target_chain_tail 
+    | ε
+    
 annotated_assignment_opt:
-    | '=' annotated_rhs
-    | ε
-
-assignment_chain:
-    | target_assignment assignment_chain_tail
-
-assignment_chain_tail:
-    | '=' target_assignment assignment_chain_tail
-    | ε
-
+    | '=' annotated_rhs
+    | ε
+    
+target_assignment: 
+    | single_target
+    
 annotated_rhs:
     | expression
-
 augassign: # Operador de asignacion aumentada
     | '+=' 
     | '-=' 
@@ -682,13 +678,13 @@ term_tail:
     | ε
 
 factor:
-    | factor_tail power
+    | unary_operator factor 
+    | power                 
 
-factor_tail:
-    | '+' factor_tail
-    | '-' factor_tail
-    | '~' factor_tail
-    | ε
+unary_operator:
+    | '+'
+    | '-'
+    | '~'
 power:
     | await_primary '**' factor 
     | await_primary
@@ -860,14 +856,18 @@ targets_list_seq_tail:
 
 # Secuencia de targets entre paréntesis (tuplas)
 targets_tuple_seq:
-    | single_target ',' targets_tuple_seq_rest
+    | single_target targets_tuple_seq_rest_comma  
 
-targets_tuple_seq_rest:
-    | single_target targets_tuple_seq_tail
-    | ε
-    
+targets_tuple_seq_rest_comma:
+    | ',' targets_tuple_seq_rest_body             
+    | ε                                           
+
+targets_tuple_seq_rest_body:
+    | single_target targets_tuple_seq_tail      
+    | ε                                         
+
 targets_tuple_seq_tail:
-    | ',' single_target targets_tuple_seq_tail
+    | ',' single_target targets_tuple_seq_tail  
     | ε
 
 # Un target que puede ser un nombre, un atributo o un subíndice
