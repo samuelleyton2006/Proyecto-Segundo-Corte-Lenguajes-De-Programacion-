@@ -550,8 +550,12 @@ expressions_tail:
 
 
 expression:
-    | disjunction 'if' disjunction 'else' expression 
-    | disjunction
+    | disjunction expression_tail
+
+expression_tail:
+    | 'if' disjunction 'else' expression
+    | ε
+
 
 assignment_expression:
     | NAME ':=' expression
@@ -575,10 +579,12 @@ conjunction_tail:
     | 'and' inversion conjunction_tail
     | ε
 
-
 inversion:
-    | 'not' inversion 
-    | comparison
+    | inversion_tail comparison
+
+inversion_tail:
+    | 'not' inversion_tail
+    | ε
 # Operadores de comparacion
 comparison:
     | bitwise_or comparison_tail
