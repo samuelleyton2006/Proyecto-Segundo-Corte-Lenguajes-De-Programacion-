@@ -1,17 +1,9 @@
-
-# Un archivo consta de statements y un fin de archivo (ENDMARKER)
-
-file: file_refactor ENDMARKER  
+file: 
+    | file_refactor ENDMARKER  
 
 file_refactor:
     | statements
     | ε
-
-
-
-# Un archivo consta de statements y un fin de archivo (ENDMARKER)
-
-
 
 statements:
     | statement statements_tail
@@ -29,7 +21,7 @@ small_stmt_line:
     | small_stmt small_stmt_line_tail NEWLINE
 
 small_stmt_line_tail:
-    | ';' small_stmt small_stmt_line_tail
+    | tk_punto_y_coma small_stmt small_stmt_line_tail
     | ε
 
 small_stmt:
@@ -54,55 +46,58 @@ compound_stmt:
     | while_stmt
     | match_stmt
 
-    
-
-#-------------
-
 assignment:
     | target_assignment assignment_suffix
 
 target_assignment:
     | NAME
-    | '(' single_target ')'
+    | tk_par_izq single_target tk_par_der
     | single_subscript_attribute_target
 
 assignment_suffix:
-    | ':' expression annotated_assignment_opt       # Asignación anotada
-    | '=' assignment_chain annotated_rhs type_comment   # Asignación simple o encadenada
-    | augassign annotated_rhs                         # Asignación aumentada
+    | tk_dos_puntos expression annotated_assignment_opt
+    | tk_asig annotated_rhs assignment_chain_opt type_comment
+    | augassign annotated_rhs
     | ε
 
 annotated_assignment_opt:
-    | '=' annotated_rhs
-    | ε
-
-assignment_chain:
-    | target_assignment assignment_chain_tail
-
-assignment_chain_tail:
-    | '=' target_assignment assignment_chain_tail
+    | tk_asig annotated_rhs
     | ε
 
 annotated_rhs:
     | expression
 
-augassign: # Operador de asignacion aumentada
-    | '+=' 
-    | '-=' 
-    | '*=' 
-    | '@=' 
-    | '/=' 
-    | '%=' 
-    | '&=' 
-    | '|=' 
-    | '^=' 
-    | '<<=' 
-    | '>>=' 
-    | '**=' 
-    | '//=' 
+assignment_chain_opt:
+    | tk_asig target_assignment assignment_chain_opt
+    | ε
+    | NEWLINE
 
+assignment_chain_opt_end:
+    | ε
+assignment_chain:
+    | target_assignment assignment_chain_tail
 
-################ palabras reservadas a statements
+assignment_chain_tail:
+    | tk_asig target_assignment assignment_chain_tail
+    | ε
+
+annotated_rhs:
+    | expression
+
+augassign:
+    | tk_mas_asig 
+    | tk_menos_asig
+    | tk_mult_asig 
+    | tk_arroba_asig 
+    | tk_div_asig
+    | tk_mod_asig 
+    | tk_amper_asig
+    | tk_bar_asig 
+    | tk_hat_asig 
+    | tk_left_shift_asig
+    | tk_right_shift_asig
+    | tk_pot_asig 
+    | tk_div_entera_asig
 
 return_stmt:
     | 'return' return_stmt_expression
@@ -110,60 +105,60 @@ return_stmt:
 return_stmt_expression:
     | expression
     | ε
-raise_stmt:
-    | 'raise' expression from_expression  # Generar un error con un from
-    | 'raise'  # Re lanzar la excepción activa dentro de un bloque except
 
+raise_stmt:
+    | 'raise' raise_stmt_tail 
+
+raise_stmt_tail:
+    | expression from_expression 
+    | ε
 from_expression:
     | 'from' expression
     | ε
 
 pass_stmt:
-    | 'pass' # Permite no generar errores en los condicionales usando 'pass'
+    | 'pass' 
 
 break_stmt:
-    | 'break'  # Rompe el statement
+    | 'break' 
 
 continue_stmt:
-    | 'continue'  # Continua 
-
-
-#----------------- Creacion de variables especiales
+    | 'continue' 
 
 global_stmt:
     | 'global' global_name_list
-q
+
 global_name_list:
     | NAME global_name_list_tail
 
 global_name_list_tail:
-    | ',' NAME global_name_list_tail
+    | tk_coma NAME global_name_list_tail
     | ε
 
-nonlocal_stmt: 'nonlocal' nonlocal_name_list
+nonlocal_stmt: 
+    | 'nonlocal' nonlocal_name_list
 
 nonlocal_name_list:
     | NAME nonlocal_name_list_tail
 
 nonlocal_name_list_tail:
-    | ',' NAME nonlocal_name_list_tail
+    | tk_coma NAME nonlocal_name_list_tail
     | ε
-
 
 del_stmt:
     | 'del' del_targets del_stmt_terminator
 
 del_stmt_terminator:
-    | ';'
+    | tk_punto_y_coma
     | NEWLINE
 
-assert_stmt: 'assert' expression assert_stmt_expression
+assert_stmt:
+    | 'assert' expression assert_stmt_expression
 
 assert_stmt_expression:
-    | ',' expression
+    | tk_coma expression
     | ε
 
-#------------------------ Import Statements
 import_stmt:
     | 'import' import_tail
     | 'from' from_import_tail
@@ -179,8 +174,8 @@ dots:
     | ε
 
 dot:
-    | '.'
-    | '...'
+    | tk_punto
+    | tk_ellipsis
 
 dotted_name_opt:
     | dotted_name
@@ -190,7 +185,7 @@ dotted_name:
     | NAME dotted_name_tail
 
 dotted_name_tail:
-    | '.' NAME dotted_name_tail
+    | tk_punto NAME dotted_name_tail
     | ε
 
 dotted_as_name:
@@ -204,13 +199,13 @@ dotted_as_names:
     | dotted_as_name dotted_as_names_tail
 
 dotted_as_names_tail:
-    | ',' dotted_as_name dotted_as_names_tail
+    | tk_coma dotted_as_name dotted_as_names_tail
     | ε
 
 import_from_targets:
-    | '(' import_from_as_names_opt ')'
+    | tk_par_izq import_from_as_names_opt tk_par_der
     | import_from_as_names
-    | '*'
+    | tk_mult
 
 import_from_as_names_opt:
     | import_from_as_names
@@ -220,7 +215,7 @@ import_from_as_names:
     | import_from_as_name import_from_as_names_tail
 
 import_from_as_names_tail:
-    | ',' import_from_as_name import_from_as_names_tail
+    | tk_coma import_from_as_name import_from_as_names_tail
     | ε
 
 import_from_as_name:
@@ -230,109 +225,86 @@ import_from_as_alias:
     | 'as' NAME
     | ε
 
-#------------------------ Statemet compuesto
-
-
 block:
     | NEWLINE INDENT statements DEDENT
     | simple_stmt_line
-
-
-#-------------------------------- CLASES
 
 class_def:
     | class_def_raw
 
 class_def_raw:
-    | 'class' NAME class_def_raw_parentesis ':' block  # Definicion formal de clase ( class NAME)
+    | 'class' NAME class_def_raw_parentesis tk_dos_puntos block 
 
 class_def_raw_parentesis:
-    | '(' class_def_raw_argument ')'
+    | tk_par_izq class_def_raw_argument tk_par_der
     | ε
 
 class_def_raw_argument:
     | arguments
     | ε
 
-
-#####  FUNCIONES
-
 function_def:
     | function_def_raw 
 
 function_def_raw:
-    | 'def' NAME '(' function_def_raw_refactor ')' function_def_raw_expression ':' func_type_comment block 
-    | 'async' 'def' NAME '(' function_def_raw_refactor ')' function_def_raw_expression ':' func_type_comment block
+    | 'def' NAME tk_par_izq function_def_raw_refactor tk_par_der function_def_raw_expression tk_dos_puntos func_type_comment block 
+    | 'async' 'def' NAME tk_par_izq function_def_raw_refactor tk_par_der function_def_raw_expression tk_dos_puntos func_type_comment block
 
 function_def_raw_refactor:
     | params
     | ε
+
 function_def_raw_expression:
-    | '->' expression
+    | tk_ejecuta expression
     | ε
-
-### PARAMETROS DE FUNCIONES
-
-
 
 params:
     | ε
     | param_list
-    | param_list ','
-
 
 param_list:
     | param param_list_rest
 
 param_list_rest:
-    | ',' param param_list_rest
+    | tk_coma param param_list_rest
     | ε
 
 param:
     | NAME param_tail
 
 param_tail:
-    | ':' expression param_default_opt
-    | '=' expression
+    | tk_dos_puntos expression param_default_opt
+    | tk_asig expression
     | ε
 
 param_default_opt:
-    | '=' expression
+    | tk_asig expression
     | ε
-
-#### if statement
 
 if_stmt:
-    | 'if' named_expression ':' block elif_else_part
+    | 'if' named_expression tk_dos_puntos block elif_else_part
 
 elif_else_part:
-    | 'elif' named_expression ':' block elif_else_part
-    | 'else' ':' block
+    | 'elif' named_expression tk_dos_puntos block elif_else_part
+    | 'else' tk_dos_puntos block
     | ε
 
-#### WHILE STATEMENT
 while_stmt:
-    | 'while' named_expression ':' block while_else_part
+    | 'while' named_expression tk_dos_puntos block while_else_part
 
 while_else_part:
-    | 'else' ':' block
+    | 'else' tk_dos_puntos block
     | ε
 
-# For statement
 for_stmt:
-    | for_prefix targets 'in' expression ':' type_comment block else_block
+    | for_prefix targets 'in' expression tk_dos_puntos type_comment block else_block
 
 for_prefix:
     | 'for'
     | 'async' 'for'
 
-
-
-
-
-# Try statement
 try_stmt:
-    | 'try' ':' block try_continuation
+    | 'try' tk_dos_puntos block try_continuation
 
 try_continuation:
     | finally_block
@@ -346,7 +318,7 @@ except_block_list_tail:
     | ε
 
 except_block:
-    | 'except' except_header ':' block
+    | 'except' except_header tk_dos_puntos block
 
 except_header:
     | expression 'as' NAME
@@ -355,25 +327,22 @@ except_header:
     | ε
 
 finally_block:
-    | 'finally' ':' block
+    | 'finally' tk_dos_puntos block
     | ε
 
-# Match statement
-
-
 match_stmt:
-    | 'match' subject_expr ':' NEWLINE INDENT case_block_list DEDENT
+    | 'match' subject_expr tk_dos_puntos NEWLINE INDENT case_block_list DEDENT
 
 
 subject_expr:
     | named_expression subject_expr_tail
 
 subject_expr_tail:
-    | ',' named_expression subject_expr_tail_opt_comma
+    | tk_coma named_expression subject_expr_tail_opt_comma
     | ε
 
 subject_expr_tail_opt_comma:
-    | ',' 
+    | tk_coma 
     | ε
 
 case_block_list:
@@ -383,9 +352,8 @@ case_block_list_tail:
     | case_block case_block_list_tail
     | ε
 
-
 case_block:
-    | 'case' patterns guard_opt ':' block
+    | 'case' patterns guard_opt tk_dos_puntos block
 
 guard_opt:
     | guard
@@ -394,7 +362,6 @@ guard_opt:
 guard:
     | 'if' named_expression
 
-#------------------- PATRONES-------------------------------------
 patterns:
     | pattern
 
@@ -409,7 +376,7 @@ or_pattern:
     | closed_pattern or_pattern_tail
 
 or_pattern_tail:
-    | '|' closed_pattern or_pattern_tail
+    | tk_or closed_pattern or_pattern_tail
     | ε
 
 closed_pattern:
@@ -421,9 +388,6 @@ closed_pattern:
     | mapping_pattern
     | class_pattern
 
-
-
-# Literal patterns
 literal_pattern:
     | signed_number  
     | string
@@ -431,84 +395,76 @@ literal_pattern:
     | 'True' 
     | 'False' 
 
-
-# Literal expressions are used to restrict permitted mapping pattern keys
 literal_expr:
     | signed_number 
     | string
     | 'None' 
     | 'True' 
     | 'False' 
-# Numero entero con signo
+
 signed_number:
     | NUMBER
-    | '-' NUMBER 
-# Numero real con signo
+    | tk_resta NUMBER 
+
 signed_real_number:
     | real_number
-    | '-' real_number 
-# Numero real
+    | tk_resta real_number 
+
 real_number:
     | NUMBER 
 
 capture_pattern:
     | pattern_capture_target 
 
-
 pattern_capture_target:
-    | NAME  # Captura solo el nombre
-
+    | NAME  
 value_pattern:
     | attr 
 
 attr:
-    | name_or_attr '.' NAME  # Para hacer matching de valores como atributos
+    | name_or_attr tk_punto NAME 
 
 name_or_attr:
     | attr
     | NAME
 
 group_pattern:
-    | '(' pattern ')'  # acepta parentesis para agrupar
+    | tk_par_izq pattern tk_par_der  
 
 sequence_pattern:
-    | '[' pattern_list_opt ']'
-    | '(' pattern_list_opt ')'
+    | tk_corchete_izq pattern_list_opt tk_corchete_der
+    | tk_par_izq pattern_list_opt tk_par_der
 
 pattern_list_opt:
     | pattern pattern_list_rest
     | ε
 
 pattern_list_rest:
-    | ',' pattern pattern_list_rest
-    | ',' 
+    | tk_coma pattern pattern_list_rest
+    | tk_coma 
     | ε
 
-# Mapeo para match y case
-
-
 mapping_pattern:
-    | '{' mapping_items '}'
+    | tk_llave_izq mapping_items tk_llave_der
 
 mapping_items:
     | ε
     | key_value_list
-    | key_value_list ','
+    | key_value_list tk_coma
 
 key_value_list:
     | key_value_pair key_value_list_tail
 
 key_value_list_tail:
-    | ',' key_value_pair key_value_list_tail
+    | tk_coma key_value_pair key_value_list_tail
     | ε
 
 key_value_pair:
-    | literal_expr ':' pattern
-    | attr ':' pattern
-
+    | literal_expr tk_dos_puntos pattern
+    | attr tk_dos_puntos pattern
 
 class_pattern:
-    | name_or_attr '(' class_pattern_body ')'
+    | name_or_attr tk_par_izq class_pattern_body tk_par_der
 
 class_pattern_body:
     | ε
@@ -516,54 +472,48 @@ class_pattern_body:
     | keyword_patterns class_pattern_body_comma_opt
 
 class_pattern_body_rest:
-    | ',' keyword_patterns class_pattern_body_comma_opt
+    | tk_coma keyword_patterns class_pattern_body_comma_opt
     | class_pattern_body_comma_opt
 
 class_pattern_body_comma_opt:
-    | ','
+    | tk_coma
     | ε
 
 positional_patterns:
     | pattern positional_patterns_tail
 
 positional_patterns_tail:
-    | ',' pattern positional_patterns_tail
+    | tk_coma pattern positional_patterns_tail
     | ε
 
 keyword_patterns:
     | keyword_pattern keyword_patterns_tail
 
 keyword_patterns_tail:
-    | ',' keyword_pattern keyword_patterns_tail
+    | tk_coma keyword_pattern keyword_patterns_tail
     | ε
 
 keyword_pattern:
-    | NAME '=' pattern
-
-
-# EXPRESSIONS
+    | NAME tk_asig pattern
 
 expressions:
     | expression expressions_tail
 
 expressions_tail:
-    | ',' expression expressions_tail
-    | ','   
+    | tk_coma expression expressions_tail
+    | tk_coma   
     | ε
-
-
 
 expression:
     | disjunction 'if' disjunction 'else' expression 
     | disjunction
 
 assignment_expression:
-    | NAME ':=' expression
+    | NAME tk_colon_asig expression
 
 named_expression:
     | assignment_expression
     | expression
-
 
 disjunction:
     | conjunction disjunction_tail
@@ -579,11 +529,9 @@ conjunction_tail:
     | 'and' inversion conjunction_tail
     | ε
 
-
 inversion:
     | 'not' inversion 
     | comparison
-# Operadores de comparacion
 comparison:
     | bitwise_or comparison_tail
 
@@ -604,97 +552,94 @@ compare_op_bitwise_or_pair:
     | is_bitwise_or
 
 eq_bitwise_or:
-    | '==' bitwise_or 
+    | tk_igual bitwise_or 
 noteq_bitwise_or:
-    | '!=' bitwise_or 
+    | tk_distinto bitwise_or 
 
-lte_bitwise_or: '<=' bitwise_or 
+lte_bitwise_or:
+    | tk_menor_igual bitwise_or 
 
-lt_bitwise_or: '<' bitwise_or 
+lt_bitwise_or:
+    | tk_menor bitwise_or 
 
-gte_bitwise_or: '>=' bitwise_or 
+gte_bitwise_or: 
+    | tk_mayor_igual bitwise_or 
 
-gt_bitwise_or: '>' bitwise_or 
+gt_bitwise_or:
+    | tk_mayor bitwise_or 
 
-notin_bitwise_or: 'not' 'in' bitwise_or 
+notin_bitwise_or:
+    | 'not' 'in' bitwise_or 
 
-in_bitwise_or: 'in' bitwise_or 
+in_bitwise_or:
+    | 'in' bitwise_or 
 
-isnot_bitwise_or: 'is' 'not' bitwise_or 
+isnot_bitwise_or:
+    | 'is' 'not' bitwise_or 
 
-is_bitwise_or: 'is' bitwise_or 
-
-# BITWISE OPERATORS
+is_bitwise_or:
+    | 'is' bitwise_or 
 
 bitwise_or:
     | bitwise_xor bitwise_or_refactor
   
 bitwise_or_refactor:
-    | '|' bitwise_xor bitwise_or_refactor
+    | tk_or bitwise_xor bitwise_or_refactor
     | ε
-
 
 bitwise_xor:
     | bitwise_and bitwise_xor_refactor
 
-
 bitwise_xor_refactor:
-    | '^' bitwise_and bitwise_xor_refactor
+    | tk_xor bitwise_and bitwise_xor_refactor
     | ε
 
 bitwise_and:
     | shift_expr bitwise_and_refactor
 
 bitwise_and_refactor:
-    | '&' shift_expr bitwise_and_refactor
+    | tk_and shift_expr bitwise_and_refactor
     | ε
 
 shift_expr:
     | sum shift_expr_refactor
 
 shift_expr_refactor:
-    | '<<' sum shift_expr_refactor
-    | '>>' sum shift_expr_refactor
+    | tk_left_shift sum shift_expr_refactor
+    | tk_right_shift sum shift_expr_refactor
     | ε
-
-# Operaciones Aritmeticas
-
 
 sum:
     | term sum_tail
 
 sum_tail:
-    | '+' term sum_tail
-    | '-' term sum_tail
+    | tk_suma term sum_tail
+    | tk_resta term sum_tail
     | ε
-
 
 term:
     | factor term_tail
 
 term_tail:
-    | '*' factor term_tail
-    | '/' factor term_tail
-    | '//' factor term_tail
-    | '%' factor term_tail
-    | '@' factor term_tail
+    | tk_mult factor term_tail
+    | tk_div factor term_tail
+    | tk_div_entera factor term_tail
+    | tk_modulo factor term_tail
+    | tk_arroba factor term_tail
     | ε
 
 factor:
-    | '+' factor 
-    | '-' factor 
-    | '~' factor 
+    | tk_suma factor 
+    | tk_resta factor 
+    | tk_tilde factor 
     | power
 
 power:
     | await_primary power_tail 
 
-=======
 power_tail:
-    | '**' factor      
+    | tk_potencia factor      
     | ε
-
-# Elementos primarios (Atributos,metodos)
 
 await_primary:
     | 'await' primary
@@ -708,20 +653,19 @@ trailer_seq:
     | ε
 
 trailer:
-    | '.' NAME
-    | '(' arguments_opt ')'
-    | '[' slices ']'
+    | tk_punto NAME
+    | tk_par_izq arguments_opt tk_par_der
+    | tk_corchete_izq slices tk_corchete_der
 
 arguments_opt:
     | arguments
     | ε
 
-
 slices:
     | slice slices_tail
 
 slices_tail:
-    | ',' slice slices_tail
+    | tk_coma slice slices_tail
     | ε
 
 slice:
@@ -729,16 +673,15 @@ slice:
     | named_expression
 
 slice_index:
-    | expression_opt ':' expression_opt slice_step_opt
+    | expression_opt tk_dos_puntos expression_opt slice_step_opt
 
 expression_opt:
     | expression
     | ε
 
 slice_step_opt:
-    | ':' expression_opt
+    | tk_dos_puntos expression_opt
     | ε
-
 
 atom:
     | NAME
@@ -751,9 +694,8 @@ atom:
     | list
     | dict
     | set
-    | '...' 
+    | tk_ellipsis 
 
-# TOKEN STRING
 string:
     | STRING string_tail
 
@@ -762,69 +704,59 @@ string_tail:
     | ε
 
 list:
-    | '[' expressions ']' 
+    | tk_corchete_izq expressions tk_corchete_der 
 
 tuple:
-    | '(' expressions ')' 
+    | tk_par_izq expressions tk_par_der 
 
 collection:
-    | '{' dict_or_set '}'
+    | tk_llave_izq dict_or_set tk_llave_der
 
 dict_or_set:
     | ε
-    | expression dict_or_set_after_expr
+    | expression dict_or_set_after_exp
 
-# Si después de la primera expression viene ':' => es un dict
 dict_or_set_after_expr:
-    | ':' expression kvpair_list_tail   # dict: primera expression es clave
-    | set_list_tail_after_first_expr    # set: primera expression forma el primer elemento
+    | tk_dos_puntos expression kvpair_list_tail   
+    | set_list_tail_after_first_expr    
 
-# listas de pares clave:valor (dict)
 kvpair_list_tail:
-    | ',' kvpair kvpair_list_tail
+    | tk_coma kvpair kvpair_list_tail
     | ε
 
 kvpair:
-    | expression ':' expression
+    | expression tk_dos_puntos expression
 
-# listas de elementos (set) — la primera expression ya fue consumida
 set_list_tail_after_first_expr:
-    | ',' expression set_list_tail_after_first_expr
+    | tk_coma expression set_list_tail_after_first_expr
     | ε
-
-# FUNCTION CALL ARGUMENTS
-
 
 arguments:
     | arg_list arguments_comma
     | ε
 
 arguments_comma:
-    | ','
+    | tk_coma
     | ε
-
 
 arg_list:
     | argument_item arg_list_tail
     | ε 
 
 argument_item:
-    | NAME '=' expression 
+    | NAME tk_asig expression 
     | expression
 
 arg_list_tail:
-    | ',' argument_item arg_list_tail
+    | tk_coma argument_item arg_list_tail
     | ε
-
-
 
 positional_args:
     | positional positional_args_refactor
 
 positional_args_refactor:
-    | ',' positional positional_args_refactor
+    | tk_coma positional positional_args_refactor
     | ε
-
 
 positional:
     | assignment_expression    
@@ -834,102 +766,87 @@ keyword_args:
     | kwarg keyword_args_refactor
 
 keyword_args_refactor:
-    | ',' kwarg keyword_args_refactor
+    | tk_coma kwarg keyword_args_refactor
     | ε
 
 kwarg:
-    | NAME '=' expression 
-
-# ASSIGNMENT TARGETS
+    | NAME tk_asig expression 
 
 targets:
     | single_target targets_tail
 
 targets_tail:
-    | ',' single_target targets_tail
-    | ',' 
+    | tk_coma single_target targets_tail
+    | tk_coma 
     | ε    
-
-# Targets_list
 
 targets_list_seq:
     | single_target
-    | single_target ',' targets_list_seq
-    | single_target ','   
-#-----------------------------
-# Targets y trailers sin llamadas (para LL(1))
+    | single_target tk_coma targets_list_seq
+    | single_target tk_coma   
 
 target_with_atom:
     | atom_target
     | atom noncall_trailer_seq
 
-# Secuencia de trailers permitidos en targets (no incluyen llamadas)
 noncall_trailer_seq:
     | noncall_trailer noncall_trailer_seq
     | ε
 
 noncall_trailer:
-    | '.' NAME
-    | '[' slices ']'
+    | tk_punto NAME
+    | tk_corchete_izq slices tk_corchete_der
 
-# Secuencia de targets entre paréntesis (tuplas)
 targets_tuple_seq:
-    | single_target ',' single_target targets_tuple_seq_tail
-    | single_target ','
+    | single_target tk_coma single_target targets_tuple_seq_tail
+    | single_target tk_coma
 
 targets_tuple_seq_tail:
-    | ',' single_target targets_tuple_seq_tail
+    | tk_coma single_target targets_tuple_seq_tail
     | ε
 
-# Un target que puede ser un nombre, un atributo o un subíndice
 atom_target:
     | NAME 
-    | '(' single_target ')' 
-    | '(' targets_tuple_seq ')' 
-    | '[' targets_list_seq ']'
+    | tk_par_izq single_target tk_par_der 
+    | tk_par_izq targets_tuple_seq tk_par_der 
+    | tk_corchete_izq targets_list_seq tk_corchete_der
 
-# Target individual (usado en asignaciones simples o anidadas)
 single_target:
     | single_subscript_attribute_target
     | NAME 
-    | '(' single_target ')' 
+    | tk_par_izq single_target tk_par_der 
 
 single_subscript_attribute_target:
-    | atom noncall_trailer_seq
+    | NAME noncall_trailer_seq
 
-# Expresión primaria para expresiones normales (permite llamadas)
 t_primary:
     | atom t_primary_refactor
 
 t_primary_refactor:
-    | '.' NAME t_primary_refactor
-    | '[' slices ']' t_primary_refactor
-    | '(' arguments ')' t_primary_refactor
+    | tk_punto NAME t_primary_refactor
+    | tk_corchete_izq slices tk_corchete_der t_primary_refactor
+    | tk_par_izq arguments tk_par_der t_primary_refactor
     | ε
 
-# ------------------- DEL STATEMENTS ----------------------
-
-# Targets usados en sentencias 'del', separados por comas
 del_targets:
     | del_target
-    | del_target ',' del_targets
-    | del_target ','
+    | del_target tk_coma del_targets
+    | del_target tk_coma
 
-# Target individual dentro de 'del'
 del_target:
     | atom noncall_trailer_seq
     | del_t_atom
 
 del_t_atom:
     | NAME 
-    | '(' del_target ')' 
-    | '(' del_targets ')' 
-    | '[' del_targets ']' 
-# Lista de expresiones de tipo separadas por comas (ej. int, str, bool)
+    | tk_par_izq del_target tk_par_der 
+    | tk_par_izq del_targets tk_par_der 
+    | tk_corchete_izq del_targets tk_corchete_der 
+
 type_expressions:
     | expression
-    | expression ',' type_expressions
-    | expression ','  
+    | expression tk_coma type_expressions
+    | expression tk_coma  
 
 
 func_type_comment:
@@ -937,6 +854,10 @@ func_type_comment:
     | TYPE_COMMENT
     | ε
 
+type_comment:
+    | NEWLINE TYPE_COMMENT func_type_comment_refactor
+    | TYPE_COMMENT
+    | ε
 func_type_comment_refactor:
     | NEWLINE INDENT
     | ε
