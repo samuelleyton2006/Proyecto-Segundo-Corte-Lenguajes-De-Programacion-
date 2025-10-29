@@ -38,13 +38,18 @@ simple_stmt_tail:
     | ε
 
 compound_stmt:
-    | function_def
+    | async_compound_stmt
     | class_def
     | if_stmt
     | while_stmt
-    | for_stmt
-    | try_stmt
+    | for_stmt_no_async 
     | match_stmt
+async_compound_stmt:
+    | 'async' async_stmt_body
+async_stmt_body:
+    | function_def_tail 
+    | for_stmt_tail
+
 
 assignment_stmt:
     | target_assignment assignment_suffix
@@ -99,16 +104,17 @@ del_targets:
     | del_target del_targets_tail
 
 del_targets_tail:
-    | tk_coma del_target del_targets_tail
-    | tk_coma
+    | tk_coma del_targets_tail_after_comma
+    | ε                                
+    
+del_targets_tail_after_comma:
+    | del_target del_targets_tail      
     | ε
-
 del_target:
-    | atom noncall_trailer_seq
-    | tk_par_izq del_target tk_par_der
-    | tk_par_izq del_targets tk_par_der
+    | del_atom noncall_trailer_seq          
+    | single_subscript_attribute_target   
+    | tk_par_izq del_targets tk_par_der     
     | tk_corchete_izq del_targets tk_corchete_der
-
 assert_stmt:
     | 'assert' expression assert_stmt_expression
 assert_stmt_expression:
@@ -135,11 +141,16 @@ raise_stmt_tail:
 from_expression:
     | 'from' expression
     | ε
-
 function_def:
-    | 'def' NAME tk_par_izq params tk_par_der function_return tk_dos_puntos block
-    | 'async' 'def' NAME tk_par_izq params tk_par_der function_return tk_dos_puntos block
+    | function_def_tail
 
+function_def_tail:
+    | 'def' NAME tk_par_izq params tk_par_der function_return tk_dos_puntos block
+for_stmt_no_async:
+    | 'for' targets 'in' expression tk_dos_puntos block else_block
+for_stmt_tail:
+    | 'for' targets 'in' expression tk_dos_puntos block else_block
+    
 function_return:
     | tk_ejecuta expression
     | ε
@@ -159,8 +170,11 @@ param_default_opt:
     | ε
 
 param_list_tail:
-    | tk_coma param param_list_tail
-    | tk_coma
+    | tk_coma param_list_tail_after_comma
+    | ε
+
+param_list_tail_after_comma:
+    | param param_list_tail            
     | ε
 class_def:
     | 'class' NAME class_args_opt tk_dos_puntos block
@@ -206,11 +220,11 @@ except_block:
     | 'except' except_header tk_dos_puntos block
 
 except_header:
-    | expression 'as' NAME
-    | expression
-    | expressions
+    | expressions except_header_as_opt 
     | ε
-
+except_header_as_opt:
+    | 'as' NAME                      
+    | ε
 finally_block:
     | 'finally' tk_dos_puntos block
     | ε
@@ -261,13 +275,24 @@ or_pattern_tail:
 
 closed_pattern:
     | literal_pattern
+    | atom_pattern
     | capture_pattern
     | value_pattern
     | group_pattern
     | sequence_pattern
     | mapping_pattern
     | class_pattern
+atom_pattern:
+    | NAME pattern_name_tail              
+    | attr pattern_attr_tail              
 
+pattern_name_tail:
+    | tk_par_izq class_pattern_body tk_par_der   
+    | pattern_attr_suffix                       
+
+pattern_attr_suffix:
+    | tk_punto NAME pattern_attr_suffix         
+    | ε
 literal_pattern:
     | signed_number
     | string
@@ -535,3 +560,13 @@ slice_step_opt:
     | ε
 block:
     | NEWLINE INDENT statements DEDENT
+
+del_atom:
+    | NAME
+    | tk_True
+    | tk_False
+    | tk_None
+    | STRING
+    | NUMBER
+    | tk_llave_izq collection_content tk_llave_der
+    | tk_ellipsis
