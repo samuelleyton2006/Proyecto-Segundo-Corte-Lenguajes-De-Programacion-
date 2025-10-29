@@ -1,5 +1,6 @@
 import sys
-from tokens_config import SIMBOLOS_INVERTIDOS
+from tokens_config import SIMBOLOS_INVERTIDOS, SIMBOLOS, SIMBOLOS_PARSER
+
 
 class ParserLL1Completo:
     def __init__(self):
@@ -28,7 +29,8 @@ class ParserLL1Completo:
             ],
             'programa_tail': [
                 ['ENDMARKER'],
-                ['NEWLINE']
+                ['NEWLINE'],
+                ['TABend', 'programa_tail']
             
             ],
             # Sentencias
@@ -164,9 +166,13 @@ class ParserLL1Completo:
             
             # DEF
             'def_stmt': [
-                ['def', 'id', 'tk_par_izq', 'parametros', 'tk_par_der', 'tk_dos_puntos', 'bloque']
+                ['def', 'id', 'tk_par_izq', 'parametros', 'tk_par_der', 'tk_dos_puntos','bloque']
             ],
-            
+            'def_op': [
+                ['bloque'],
+                ['ε'],
+                ['NEWLINE']
+            ],
             'parametros': [
                 ['parametro', 'lista_parametros'],
                 ['ε']
@@ -232,9 +238,13 @@ class ParserLL1Completo:
             
             # BLOQUE
             'bloque': [
-                ['NEWLINE', 'TAB', 'sentencias', 'TABend']
+                ['NEWLINE', 'TAB', 'sentencias', 'bloque_refactor']
             ],
-            
+            'bloque_refactor': [
+                ['TABend'],
+                ['NEWLINE'],
+                ['ENDMARKER']
+            ],
             # EXPRESIONES
             'expresion': [
                 ['expr_or']
@@ -512,7 +522,10 @@ class ParserLL1Completo:
             else:
                 self.first[no_terminal].add(simbolo)
                 break
-
+    
+    # ===================================================================
+    # CÁLCULO DE FOLLOW
+    # ===================================================================
     
     def calcular_follow(self, verbose=False):
         """Calcula el conjunto FOLLOW para cada no terminal"""
@@ -576,6 +589,7 @@ class ParserLL1Completo:
     # CONSTRUCCION DE TABLA DE PARSING
     
     def construir_tabla_parsing(self, verbose=False):
+        """Construye la tabla de análisis sintáctico LL(1)"""
         if verbose:
             print("\n" + "=" * 60)
             print("CONSTRUYENDO TABLA DE PARSING LL(1)")
@@ -616,11 +630,11 @@ class ParserLL1Completo:
         print("\n" + "=" * 60)
         print(f"TABLA DE PARSING: {len(self.tabla_parsing)} entradas")
         print("=" * 60)
-        #print(self.tabla_parsing)
         
         return self.tabla_parsing, conflictos
     
     def _calcular_first_produccion(self, produccion):
+        """Calcula FIRST de una producción completa"""
         resultado = set()
         
         if produccion[0] == self.epsilon:
@@ -640,6 +654,7 @@ class ParserLL1Completo:
         return resultado
     
     def _obtener_terminales(self):
+        """Extrae todos los terminales mencionados en la gramática"""
         terminales = set()
         for producciones in self.gramatica.values():
             for produccion in producciones:
@@ -651,6 +666,7 @@ class ParserLL1Completo:
     # ANÁLISIS SINTÁCTICO
     
     def parsear(self, tokens):
+        """Analiza sintácticamente una lista de tokens"""
         self.tokens = tokens
         self.pos = 0
         self.token_actual = tokens[0] if tokens else None
@@ -665,7 +681,7 @@ class ParserLL1Completo:
             return False
     
     def _parsear_no_terminal(self, no_terminal):
-
+        """Parsea un no terminal usando la tabla de parsing"""
         if no_terminal == self.epsilon:
             return
         
@@ -686,41 +702,55 @@ class ParserLL1Completo:
                     # Es un terminal
                     self._match(simbolo)
         else:
+            if (no_terminal in SIMBOLOS_PARSER):
+                no_terminal = SIMBOLOS_PARSER[no_terminal]
+            elif (no_terminal in SIMBOLOS_INVERTIDOS):
+                no_terminal = SIMBOLOS_INVERTIDOS[no_terminal]
+            elif (no_terminal in SIMBOLOS):
+                no_terminal = SIMBOLOS[no_terminal]
+            
+            if(terminal_actual in SIMBOLOS_PARSER):
+                terminal_actual = SIMBOLOS_PARSER[terminal_actual]
+            elif (terminal_actual in SIMBOLOS_INVERTIDOS):
+                terminal_actual = SIMBOLOS_INVERTIDOS[terminal_actual]
+            elif (terminal_actual in SIMBOLOS):
+                terminal_actual = SIMBOLOS[terminal_actual]
             self._error(f"Sintaxis invalida({no_terminal}, {terminal_actual})")
-
-        
+    
     def _match(self, tipo_esperado):
-
+        """Verifica y consume un token del tipo esperado"""
         if self.token_actual.tipo == tipo_esperado:
             self._avanzar()
         else:
-            lexema_esperado = SIMBOLOS_INVERTIDOS[tipo_esperado]
-            token_encontrado = self.token_actual.valor
-        
+            if(tipo_esperado in SIMBOLOS_PARSER):
+                tipo_esperado = SIMBOLOS_PARSER[tipo_esperado]
+            elif (tipo_esperado in SIMBOLOS_INVERTIDOS):
+                tipo_esperado = SIMBOLOS_INVERTIDOS[tipo_esperado]
+            elif (tipo_esperado in SIMBOLOS):
+                tipo_esperado = SIMBOLOS[tipo_esperado]
 
-            if self.token_actual.tipo in ['TABend', 'NEWLINE', 'ENDMARKER']:
-                if tipo_esperado in ['tk_par_der', 'tk_corchete_der', 'tk_llave_der']:
-                    simbolo_esperado = SIMBOLOS_INVERTIDOS[tipo_esperado]
-                    print(f"✗ Error sintáctico en línea {self.token_actual.linea}: "
-                        f"Falta cerrar '{simbolo_esperado}'")
-                else:
-                    print(f"✗ Error sintáctico en línea {self.token_actual.linea}: "
-                        f"Se esperaba '{lexema_esperado}'")
+            if(self.token_actual.tipo in SIMBOLOS_PARSER):
+                actual_tipo = SIMBOLOS_PARSER[self.token_actual.tipo]
+            elif (self.token_actual.tipo in SIMBOLOS_INVERTIDOS):
+                actual_tipo = SIMBOLOS_INVERTIDOS[self.token_actual.tipo]
+            elif (self.token_actual.tipo in SIMBOLOS):
+                actual_tipo = SIMBOLOS[self.token_actual.tipo]
             else:
-                print(f"✗ Error sintáctico en línea {self.token_actual.linea}: "
-                    f"Se esperaba '{lexema_esperado}' pero se encontró '{token_encontrado}'")
-        
-            sys.exit(1)
-    
+                actual_tipo = self.token_actual.tipo
+            self._error(f"Se esperaba '{tipo_esperado}' pero se encontró '{actual_tipo}'")
+
     def _avanzar(self):
+        """Avanza al siguiente token"""
         if self.pos < len(self.tokens) - 1:
             self.pos += 1
             self.token_actual = self.tokens[self.pos]
     
     def _error(self, mensaje):
+        """Registra un error sintáctico"""
         error_msg = f"Error sintáctico en línea {self.token_actual.fila}, columna {self.token_actual.columna}: {mensaje}"
         self.errores.append(error_msg)
         raise SyntaxError(error_msg)
+
 
 
 if __name__ == "__main__":
@@ -805,6 +835,7 @@ if __name__ == "__main__":
             
             print("\n[1] Análisis Léxico...")
             tokens = analizador_lexico(codigo)
+            print(tokens)
             print(f"✓ Se generaron {len(tokens)} tokens")
             
             print("\n[2] Análisis Sintáctico...")
