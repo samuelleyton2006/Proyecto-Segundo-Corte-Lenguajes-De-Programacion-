@@ -1,6 +1,7 @@
-try:
-    x = 1 / 0
-except ZeroDivisionError:
-    print("Error")
-finally:
-    print("Fin")
+class Animal:
+    def __init__(self):
+        pass
+
+class Perro(Animal):
+    def __init__(self):
+        self.raza = "Labrador"
