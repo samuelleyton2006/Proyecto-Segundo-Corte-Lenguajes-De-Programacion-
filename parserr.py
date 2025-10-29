@@ -110,37 +110,18 @@ def calcular_siguientes(gramatica, inicial, primeros):
 def construir_tabla_LL1(gramatica, primeros, siguientes):
     tabla = {}
     for nt in gramatica:
-        # Pasa 1: Asignar todas las producciones NO-ÉPSILON usando FIRST
-        regla_epsilon = None
-        
         for prod in gramatica[nt]:
-            
-            if prod == ["ε"]:
-                regla_epsilon = prod
-                continue
-                
             primeros_prod = set()
             vacio = True
-            
-            # Calcular FIRST(Producción)
             for s in prod:
                 primeros_prod |= (primeros[s] if s in primeros else {s})
                 if "ε" not in (primeros[s] if s in primeros else {s}):
                     vacio = False
                     break
-            
+            if vacio:
+                primeros_prod |= siguientes[nt]
             for t in primeros_prod - {"ε"}:
-                if (nt, t) in tabla:
-                    # **CONFIRMA EL CONFLICTO LL(1)**
-                    raise Exception(f"Conflicto LL(1) detectado en ({nt}, {t})") 
                 tabla[(nt, t)] = prod
-
-        if regla_epsilon:
-            for t in siguientes[nt]:
-
-                if (nt, t) not in tabla:
-                    tabla[(nt, t)] = regla_epsilon
-                    
     return tabla
 
 
@@ -242,6 +223,7 @@ if __name__ == "__main__":
 
     # Analizar con el lexer
     tokens = analizador_lexico(codigo)
+    print(tokens)
     print(f"🔹 Total de tokens generados: {len(tokens)}\n")
 
     # Iniciar parser LL(1)

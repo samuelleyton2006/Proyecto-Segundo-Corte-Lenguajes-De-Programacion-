@@ -1,572 +1,343 @@
-file:
-    | statements tk_eof
+stmts:
+    | stmt stmts_prime EOF
 
-statements:
-    | statement statements_tail
-    | COMMENT NEWLINE statements_tail
-    | NEWLINE statements_tail
+stmts_prime:
+    | stmt stmts_prime
     | ε
 
-statements_tail:
-    | statement statements_tail
-    | COMMENT NEWLINE statements_tail
-    | NEWLINE statements_tail
-    | ε
+stmt:
+    | simple_stmts
+    | complx
 
-statement:
-    | simple_stmt
-    | compound_stmt
+simple_stmts:
+    | simple_stmt NEWLINE
 
 simple_stmt:
-    | small_stmt simple_stmt_tail
-
-small_stmt:
-    | assignment_stmt
+    | id assign_stmt
+    | self assign_stmt
     | return_stmt
+    | print_stmt
     | import_stmt
-    | pass_stmt
-    | break_stmt
-    | continue_stmt
-    | del_stmt
-    | assert_stmt
-    | global_stmt
-    | nonlocal_stmt
-    | raise_stmt
+    | pass
 
-simple_stmt_tail:
-    | tk_punto_y_coma small_stmt simple_stmt_tail
-    | ε
-
-compound_stmt:
-    | async_compound_stmt
-    | class_def
+complx:
+    | def def_stmt
     | if_stmt
     | while_stmt
-    | for_stmt_no_async 
-    | match_stmt
-async_compound_stmt:
-    | 'async' async_stmt_body
-async_stmt_body:
-    | function_def_tail 
-    | for_stmt_tail
+    | for_stmt
+    | class_stmt
+    | try_stmt
 
+def_stmt:
+    | def_init_stmt
+    | def_normal_stmt
 
-assignment_stmt:
-    | target_assignment assignment_suffix
+def_init_stmt:
+    | __init__ tk_par_izq param_list tk_par_der tk_dos_puntos block
 
-target_assignment:
-    | NAME
-    | tk_par_izq single_target tk_par_der
-    | single_subscript_attribute_target
+def_normal_stmt:
+    | id tk_par_izq param_list tk_par_der tk_dos_puntos block
 
-assignment_suffix:
-    | tk_dos_puntos expression annotated_assignment_opt
-    | tk_asig annotated_rhs assignment_chain_opt 
-    | augassign annotated_rhs
+param_list:
+    | id param_structure param_list_prime
+    | self param_structure param_list_prime
     | ε
 
-annotated_assignment_opt:
-    | tk_asig annotated_rhs
+param_list_prime:
+    | tk_coma param_list
     | ε
 
-annotated_rhs:
-    | expression
-
-assignment_chain_opt:
-    | tk_asig target_assignment assignment_chain_opt
+param_structure:
+    | tk_dos_puntos param_list_complex
     | ε
 
-augassign:
-    | tk_mas_asig | tk_menos_asig | tk_mult_asig | tk_arroba_asig
-    | tk_div_asig | tk_mod_asig | tk_amper_asig | tk_bar_asig
-    | tk_hat_asig | tk_left_shift_asig | tk_right_shift_asig
-    | tk_pot_asig | tk_div_entera_asig
+param_list_complex:
+    | tipo_lista tk_corchete_izq lista_tipos_datos tk_corchete_der
+    | tk_corchete_izq tipos_datos tk_corchete_der
+    | tipos_datos
+    | ε
+
+lista_tipos_datos:
+    | tipos_datos lista_tipos_datos_prime
+
+lista_tipos_datos_prime:
+    | tk_coma tipos_datos lista_tipos_datos_prime
+    | ε
+
+tipos_datos:
+    | int
+    | float
+    | str
+    | bool
+
+tipo_lista:
+    | list
+    | set
+    | dict
+    | tuple
 
 return_stmt:
-    | 'return' return_expr_opt
+    | return expr
 
-return_expr_opt:
-    | expression
+print_stmt:
+    | print tk_par_izq print_expr tk_par_der
+
+print_expr:
+    | expr print_tail
+
+print_tail:
+    | tk_coma expr print_tail
     | ε
 
-pass_stmt: | 'pass'
-break_stmt: | 'break'
-continue_stmt: | 'continue'
+import_stmt:
+    | import id_list
+    | from id import id_list
 
-del_stmt:
-    | 'del' del_targets del_stmt_terminator
+class_stmt:
+    | class id class_body
 
-del_stmt_terminator:
-    | tk_punto_y_coma
+class_body:
+    | tk_dos_puntos block
+    | tk_par_izq id tk_par_der tk_dos_puntos block
+
+block:
+    | NEWLINE TAB stmts_prime TABend
+    | simple_stmts
+
+id_list:
+    | id id_list_prime
+
+id_list_prime:
+    | tk_coma id id_list_prime
+    | as id
+    | ε
+
+assign_stmt:
+    | assign_op expr
+    | factor_tail_prime assignment
+
+assignment:
+    | assign_op expr
+    | ε
+
+assign_op:
+    | tk_asig
+    | tk_mas_asig
+    | tk_menos_asig
+    | tk_mult_asig
+    | tk_div_asig
+    | tk_mod_asig
+
+loop_stmt:
+    | simple_stmt_loop
+    | complx
     | NEWLINE
 
-del_targets:
-    | del_target del_targets_tail
+simple_stmt_loop:
+    | id assign_stmt
+    | return_stmt
+    | print_stmt
+    | import_stmt
+    | break
+    | continue
+    | pass
 
-del_targets_tail:
-    | tk_coma del_targets_tail_after_comma
-    | ε                                
-    
-del_targets_tail_after_comma:
-    | del_target del_targets_tail      
-    | ε
-del_target:
-    | del_atom noncall_trailer_seq          
-    | single_subscript_attribute_target   
-    | tk_par_izq del_targets tk_par_der     
-    | tk_corchete_izq del_targets tk_corchete_der
-assert_stmt:
-    | 'assert' expression assert_stmt_expression
-assert_stmt_expression:
-    | tk_coma expression
-    | ε
+loop_block:
+    | NEWLINE TAB loop_stmts TABend
+    | simple_stmts_loop
 
-global_stmt:
-    | 'global' NAME global_name_list_tail
-global_name_list_tail:
-    | tk_coma NAME global_name_list_tail
+loop_stmts:
+    | loop_stmt loop_stmts_prime
+
+loop_stmts_prime:
+    | loop_stmt loop_stmts_prime
     | ε
 
-nonlocal_stmt:
-    | 'nonlocal' NAME nonlocal_name_list_tail
-nonlocal_name_list_tail:
-    | tk_coma NAME nonlocal_name_list_tail
-    | ε
+simple_stmts_loop:
+    | simple_stmt_loop NEWLINE
 
-raise_stmt:
-    | 'raise' raise_stmt_tail
-raise_stmt_tail:
-    | expression from_expression
-    | ε
-from_expression:
-    | 'from' expression
-    | ε
-function_def:
-    | function_def_tail
-
-function_def_tail:
-    | 'def' NAME tk_par_izq params tk_par_der function_return tk_dos_puntos block
-for_stmt_no_async:
-    | 'for' targets 'in' expression tk_dos_puntos block else_block
-for_stmt_tail:
-    | 'for' targets 'in' expression tk_dos_puntos block else_block
-    
-function_return:
-    | tk_ejecuta expression
-    | ε
-
-params:
-    | param param_list_tail
-    | ε
-
-param:
-    | NAME param_tail
-param_tail:
-    | tk_dos_puntos expression param_default_opt
-    | tk_asig expression
-    | ε
-param_default_opt:
-    | tk_asig expression
-    | ε
-
-param_list_tail:
-    | tk_coma param_list_tail_after_comma
-    | ε
-
-param_list_tail_after_comma:
-    | param param_list_tail            
-    | ε
-class_def:
-    | 'class' NAME class_args_opt tk_dos_puntos block
-
-class_args_opt:
-    | tk_par_izq arguments tk_par_der
-    | ε
 if_stmt:
-    | 'if' expression tk_dos_puntos block elif_else_part
+    | if condition tk_dos_puntos loop_block if_tail
 
-elif_else_part:
-    | 'elif' expression tk_dos_puntos block elif_else_part
-    | 'else' tk_dos_puntos block
+if_tail:
+    | elif condition tk_dos_puntos loop_block if_tail
+    | else tk_dos_puntos loop_block
     | ε
+
 while_stmt:
-    | 'while' expression tk_dos_puntos block else_block
+    | while condition tk_dos_puntos loop_block while_tail
+
+while_tail:
+    | else tk_dos_puntos loop_block
+    | ε
 
 for_stmt:
-    | for_prefix targets 'in' expression tk_dos_puntos block else_block
+    | for id in loop_iterable tk_dos_puntos loop_block
 
-for_prefix:
-    | 'for'
-    | 'async' 'for'
+loop_iterable:
+    | id tk_par_izq items_tuple tk_par_der
+    | tk_corchete_izq items_array tk_corchete_der
+    | id factor_tail_prime
+    | self factor_tail_prime
+    | tk_par_izq items_tuple tk_par_der
+    | tk_cadena
 
-else_block:
-    | 'else' tk_dos_puntos block
-    | ε
 try_stmt:
-    | 'try' tk_dos_puntos block try_continuation
+    | try tk_dos_puntos loop_block try_stmt_tail
 
-try_continuation:
-    | finally_block
-    | except_block_list else_block finally_block
+try_stmt_tail:
+    | except_stmt finally_stmt
 
-except_block_list:
-    | except_block except_block_list_tail
-
-except_block_list_tail:
-    | except_block except_block_list_tail
+except_stmt:
+    | except except_e tk_dos_puntos loop_block except_try
     | ε
 
-except_block:
-    | 'except' except_header tk_dos_puntos block
-
-except_header:
-    | expressions except_header_as_opt 
-    | ε
-except_header_as_opt:
-    | 'as' NAME                      
-    | ε
-finally_block:
-    | 'finally' tk_dos_puntos block
+except_try:
+    | except_stmt
+    | try_else
     | ε
 
-match_stmt:
-    | 'match' subject_expr tk_dos_puntos NEWLINE INDENT case_block_list DEDENT
-
-subject_expr:
-    | named_expression subject_expr_tail
-subject_expr_tail:
-    | tk_coma named_expression subject_expr_tail_opt_comma
-    | ε
-subject_expr_tail_opt_comma:
-    | tk_coma
+except_e:
+    | id
     | ε
 
-case_block_list:
-    | case_block case_block_list_tail
-case_block_list_tail:
-    | case_block case_block_list_tail
+try_else:
+    | else tk_dos_puntos loop_block
     | ε
 
-case_block:
-    | 'case' patterns guard_opt tk_dos_puntos block
-
-guard_opt:
-    | guard
+finally_stmt:
+    | finally tk_dos_puntos loop_block
     | ε
 
-guard:
-    | 'if' named_expression
+condition:
+    | expr condition_prime
+    | tk_par_izq condition tk_par_der
+    | True
+    | False
 
-patterns:
-    | pattern
-
-pattern:
-    | or_pattern pattern_as_opt
-
-pattern_as_opt:
-    | 'as' pattern_capture_target
-    | ε
-
-or_pattern:
-    | closed_pattern or_pattern_tail
-or_pattern_tail:
-    | tk_or closed_pattern or_pattern_tail
-    | ε
-
-closed_pattern:
-    | literal_pattern
-    | atom_pattern
-    | capture_pattern
-    | value_pattern
-    | group_pattern
-    | sequence_pattern
-    | mapping_pattern
-    | class_pattern
-atom_pattern:
-    | NAME pattern_name_tail              
-    | attr pattern_attr_tail              
-
-pattern_name_tail:
-    | tk_par_izq class_pattern_body tk_par_der   
-    | pattern_attr_suffix                       
-
-pattern_attr_suffix:
-    | tk_punto NAME pattern_attr_suffix         
-    | ε
-literal_pattern:
-    | signed_number
-    | string
-    | 'None'
-    | 'True'
-    | 'False'
-
-capture_pattern:
-    | pattern_capture_target
-
-pattern_capture_target:
-    | NAME
-
-value_pattern:
-    | attr
-
-attr:
-    | name_or_attr tk_punto NAME
-
-name_or_attr:
-    | attr
-    | NAME
-
-group_pattern:
-    | tk_par_izq pattern tk_par_der
-
-sequence_pattern:
-    | tk_corchete_izq pattern_list_opt tk_corchete_der
-    | tk_par_izq pattern_list_opt tk_par_der
-
-pattern_list_opt:
-    | pattern pattern_list_rest
-    | ε
-
-pattern_list_rest:
-    | tk_coma pattern pattern_list_rest
-    | tk_coma
-    | ε
-
-mapping_pattern:
-    | tk_llave_izq mapping_items tk_llave_der
-mapping_items:
-    | ε
-    | key_value_list
-    | key_value_list tk_coma
-
-key_value_list:
-    | key_value_pair key_value_list_tail
-key_value_list_tail:
-    | tk_coma key_value_pair key_value_list_tail
-    | ε
-
-key_value_pair:
-    | literal_expr tk_dos_puntos pattern
-    | attr tk_dos_puntos pattern
-
-class_pattern:
-    | name_or_attr tk_par_izq class_pattern_body tk_par_der
-
-class_pattern_body:
-    | ε
-    | positional_patterns class_pattern_body_rest
-    | keyword_patterns class_pattern_body_comma_opt
-
-class_pattern_body_rest:
-    | tk_coma keyword_patterns class_pattern_body_comma_opt
-    | class_pattern_body_comma_opt
-
-class_pattern_body_comma_opt:
-    | tk_coma
-    | ε
-
-positional_patterns:
-    | pattern positional_patterns_tail
-positional_patterns_tail:
-    | tk_coma pattern positional_patterns_tail
-    | ε
-
-keyword_patterns:
-    | keyword_pattern keyword_patterns_tail
-keyword_patterns_tail:
-    | tk_coma keyword_pattern keyword_patterns_tail
-    | ε
-
-keyword_pattern:
-    | NAME tk_asig pattern
-
-expressions:
-    | expression expressions_tail
-expressions_tail:
-    | tk_coma expression expressions_tail
-    | tk_coma
-    | ε
-
-expression:
-    | disjunction 'if' disjunction 'else' expression
-    | disjunction
-
-assignment_expression:
-    | NAME tk_colon_asig expression
-
-named_expression:
-    | assignment_expression
-    | expression
-
-disjunction:
-    | conjunction disjunction_tail
-disjunction_tail:
-    | 'or' conjunction disjunction_tail
-    | ε
-
-conjunction:
-    | inversion conjunction_tail
-conjunction_tail:
-    | 'and' inversion conjunction_tail
-    | ε
-
-inversion:
-    | 'not' inversion
-    | comparison
-
-comparison:
-    | bitwise_or comparison_tail
-    | bitwise_or
-
-comparison_tail:
-    | comp_op bitwise_or comparison_tail
+condition_prime:
+    | in id
+    | comp_op expr
     | ε
 
 comp_op:
-    | tk_igual | tk_distinto | tk_menor | tk_menor_igual | tk_mayor | tk_mayor_igual
-    | 'in' | 'not' 'in' | 'is' | 'is' 'not'
+    | tk_igual
+    | tk_distinto
+    | tk_menor
+    | tk_mayor
+    | tk_menor_igual
+    | tk_mayor_igual
 
-bitwise_or:
-    | bitwise_xor bitwise_or_tail
-bitwise_or_tail:
-    | tk_or bitwise_xor bitwise_or_tail
-    | ε
+expr:
+    | term expr_prime
 
-bitwise_xor:
-    | bitwise_and bitwise_xor_tail
-bitwise_xor_tail:
-    | tk_xor bitwise_and bitwise_xor_tail
-    | ε
-
-bitwise_and:
-    | shift_expr bitwise_and_tail
-bitwise_and_tail:
-    | tk_and shift_expr bitwise_and_tail
-    | ε
-
-shift_expr:
-    | sum shift_expr_tail
-shift_expr_tail:
-    | tk_left_shift sum shift_expr_tail
-    | tk_right_shift sum shift_expr_tail
-    | ε
-
-sum:
-    | term sum_tail
-sum_tail:
-    | tk_suma term sum_tail
-    | tk_resta term sum_tail
+expr_prime:
+    | tk_suma term expr_prime
+    | tk_resta term expr_prime
+    | tk_modulo term expr_prime
+    | and term expr_prime
+    | or term expr_prime
     | ε
 
 term:
-    | factor term_tail
-term_tail:
-    | tk_mult factor term_tail
-    | tk_div factor term_tail
-    | tk_div_entera factor term_tail
-    | tk_modulo factor term_tail
-    | tk_arroba factor term_tail
+    | factor term_prime
+
+term_prime:
+    | tk_mult factor term_prime
+    | tk_div factor term_prime
+    | tk_modulo factor term_prime
     | ε
 
 factor:
-    | tk_suma factor
-    | tk_resta factor
-    | tk_tilde factor
-    | power
+    | tk_par_izq expr tk_par_der
+    | id factor_tail_prime
+    | self factor_tail_prime
+    | set_function
+    | list_function
+    | tuple_function
+    | tk_corchete_izq items_array tk_corchete_der
+    | tk_llave_izq set_dict tk_llave_der
+    | num
+    | True
+    | False
+    | not factor
+    | tk_par_izq items_tuple tk_par_der
+    | tk_cadena
 
-power:
-    | await_primary power_tail
-power_tail:
-    | tk_potencia factor
+factor_tail_prime:
+    | tk_corchete_izq items_array tk_corchete_der factor_tail_prime
+    | tk_par_izq arg_list tk_par_der factor_tail_prime
+    | tk_punto id factor_tail_prime
     | ε
 
-await_primary:
-    | 'await' primary
-    | atom trailer_seq
-
-primary:
-    | atom trailer_seq
-trailer_seq:
-    | trailer trailer_seq
-    | ε
-trailer:
-    | tk_punto NAME
-    | tk_par_izq arguments_opt tk_par_der
-    | tk_corchete_izq slices tk_corchete_der
-
-arguments_opt:
-    | arguments
+set_dict:
+    | items_set
+    | items_dict
     | ε
 
-arguments:
-    | arg_list arguments_comma
+items_set:
+    | items_prime
+
+items_dict:
+    | pair dict_prime
+
+pair:
+    | expr tk_dos_puntos expr
+
+dict_prime:
+    | tk_coma pair dict_prime
     | ε
-arguments_comma:
-    | tk_coma
+
+items_tuple:
+    | expr items_prime
+
+items_prime:
+    | tk_coma items_rest_tail items_prime
     | ε
+
+items_rest_tail:
+    | expr
+    | ε
+
+items_array:
+    | expr items_array_prime
+    | ε
+
+items_array_prime:
+    | tk_coma items_array
+    | tk_dos_puntos items_array_tail
+    | ε
+
+items_array_tail:
+    | expr items_array_prime
+    | ε
+
+set_function:
+    | set tk_par_izq items tk_par_der
+
+list_function:
+    | list tk_par_izq items tk_par_der
+
+tuple_function:
+    | tuple tk_par_izq items tk_par_der
+
+items:
+    | tk_cadena
+    | tk_corchete_izq items_array tk_corchete_der factor_tail_prime
+    | tk_par_izq arg_list tk_par_der factor_tail_prime
+    | ε
+
 arg_list:
-    | argument_item arg_list_tail
-    | ε
-argument_item:
-    | NAME tk_asig expression
-    | expression
-arg_list_tail:
-    | tk_coma argument_item arg_list_tail
+    | expr arg_list_prime
+
+arg_list_prime:
+    | tk_coma expr arg_list_prime
     | ε
 
-atom:
-    | NAME
-    | tk_True
-    | tk_False
-    | tk_None
-    | STRING
-    | NUMBER
-    | tk_par_izq expressions tk_par_der
-    | tk_corchete_izq expressions tk_corchete_der
-    | tk_llave_izq collection_content tk_llave_der
-    | tk_ellipsis
+num:
+    | tk_entero num_int
+    | tk_punto tk_entero
 
-collection_content:
-    | kvpair kvpair_list_tail
-    | expression set_list_tail
+num_int:
+    | tk_punto tk_entero 
     | ε
-
-kvpair_list_tail:
-    | tk_coma kvpair kvpair_list_tail
-    | ε
-
-kvpair:
-    | expression tk_dos_puntos expression
-
-set_list_tail:
-    | tk_coma expression set_list_tail
-    | ε
-
-slices:
-    | slice slices_tail
-slices_tail:
-    | tk_coma slice slices_tail
-    | ε
-slice:
-    | slice_index
-    | named_expression
-slice_index:
-    | expression_opt tk_dos_puntos expression_opt slice_step_opt
-expression_opt:
-    | expression
-    | ε
-slice_step_opt:
-    | tk_dos_puntos expression_opt
-    | ε
-block:
-    | NEWLINE INDENT statements DEDENT
-
-del_atom:
-    | NAME
-    | tk_True
-    | tk_False
-    | tk_None
-    | STRING
-    | NUMBER
-    | tk_llave_izq collection_content tk_llave_der
-    | tk_ellipsis

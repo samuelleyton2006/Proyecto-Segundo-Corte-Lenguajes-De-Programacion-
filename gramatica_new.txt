@@ -1,0 +1,210 @@
+file:
+    | statements tk_eof
+    | NEWLINE file
+
+statements:
+    | statement statements_tail
+    | ε
+
+statements_tail:
+    | statement statements_tail
+    | ε
+
+statement:
+    | simple_stmt
+    | compound_stmt
+simple_stmt:
+    | assignment_stmt
+    | return_stmt
+    | import_stmt
+    | pass_stmt
+    | break_stmt
+    | continue_stmt
+    | del_stmt
+assignment_stmt:
+    | single_target assignment_refactor
+
+assignment_refactor:
+    | tk_asig expression
+    | ε
+return_stmt:
+    | 'return' return_expr_opt
+
+return_expr_opt:
+    | expression
+    | ε
+compound_stmt:
+    | function_def
+    | class_def
+    | if_stmt
+    | while_stmt
+    | for_stmt
+function_def:
+    | 'def' NAME tk_par_izq params tk_par_der tk_dos_puntos block
+
+class_def:
+    | 'class' NAME class_args_opt tk_dos_puntos block
+
+class_args_opt:
+    | tk_par_izq arguments tk_par_der
+    | ε
+if_stmt:
+    | 'if' expression tk_dos_puntos block elif_stmt else_block
+
+elif_stmt:
+    | 'elif' expression tk_dos_puntos block elif_stmt
+    | ε
+
+else_block:
+    | 'else' tk_dos_puntos block
+    | ε
+
+while_stmt:
+    | 'while' expression tk_dos_puntos block else_block
+
+for_stmt:
+    | 'for' targets 'in' expression tk_dos_puntos block else_block
+expression:
+    | disjunction
+
+disjunction:
+    | conjunction disjunction_tail
+
+disjunction_tail:
+    | 'or' conjunction disjunction_tail
+    | ε
+
+conjunction:
+    | inversion conjunction_tail
+
+conjunction_tail:
+    | 'and' inversion conjunction_tail
+    | ε
+
+inversion:
+    | 'not' inversion
+    | comparison
+
+comparison:
+    | bitwise_or comparison_tail
+    | bitwise_or
+
+comparison_tail:
+    | comp_op bitwise_or comparison_tail
+    | ε
+
+comp_op:
+    | tk_igual | tk_distinto | tk_menor | tk_menor_igual | tk_mayor | tk_mayor_igual
+bitwise_or:
+    | bitwise_xor bitwise_or_tail
+
+bitwise_or_tail:
+    | tk_or bitwise_xor bitwise_or_tail
+    | ε
+
+bitwise_xor:
+    | bitwise_and bitwise_xor_tail
+
+bitwise_xor_tail:
+    | tk_xor bitwise_and bitwise_xor_tail
+    | ε
+
+bitwise_and:
+    | shift_expr bitwise_and_tail
+
+bitwise_and_tail:
+    | tk_and shift_expr bitwise_and_tail
+    | ε
+
+shift_expr:
+    | sum shift_expr_tail
+
+shift_expr_tail:
+    | tk_left_shift sum shift_expr_tail
+    | tk_right_shift sum shift_expr_tail
+    | ε
+
+sum:
+    | term sum_tail
+
+sum_tail:
+    | tk_suma term sum_tail
+    | tk_resta term sum_tail
+    | ε
+
+term:
+    | factor term_tail
+
+term_tail:
+    | tk_mult factor term_tail
+    | tk_div factor term_tail
+    | tk_div_entera factor term_tail
+    | tk_modulo factor term_tail
+    | tk_arroba factor term_tail
+    | ε
+
+factor:
+    | tk_suma factor
+    | tk_resta factor
+    | tk_tilde factor
+    | power
+power:
+    | atom power_tail
+
+power_tail:
+    | tk_potencia factor
+    | ε
+
+atom:
+    | NAME
+    | tk_True
+    | tk_False
+    | tk_None
+    | STRING
+    | NUMBER
+    | tk_par_izq expressions tk_par_der
+    | tk_corchete_izq expressions tk_corchete_der
+    | tk_llave_izq collection_content tk_llave_der
+    | tk_ellipsis
+collection_content:
+    | kvpair kvpair_list_tail       # dict
+    | expression set_list_tail      # set
+    | ε                             # dict vacío
+
+kvpair_list_tail:
+    | tk_coma kvpair kvpair_list_tail
+    | ε
+
+kvpair:
+    | expression tk_dos_puntos expression
+
+set_list_tail:
+    | tk_coma expression set_list_tail
+    | ε
+params:
+    | param param_list_tail
+    | ε  # sin parámetros
+
+param_list_tail:
+    | tk_coma param param_list_tail 
+    | tk_coma                       
+    | ε
+param:
+    | NAME param_tail
+
+param_tail:
+    | tk_dos_puntos expression param_default_opt
+    | tk_asig expression
+    | ε
+
+param_default_opt:
+    | tk_asig expression
+    | ε
+
+targets:
+    | single_target targets_tail
+
+targets_tail:
+    | tk_coma single_target targets_tail
+    | tk_coma
+    | ε
