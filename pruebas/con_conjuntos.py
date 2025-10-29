@@ -1,3 +1,9 @@
+"""
+Parser LL(1) COMPLETO con cálculo de conjuntos FIRST, FOLLOW, Tabla de Análisis
+Y análisis sintáctico de archivos Python
+"""
+
+import sys
 
 
 class ParserLL1Completo:
@@ -13,6 +19,12 @@ class ParserLL1Completo:
         # Símbolos especiales
         self.epsilon = 'ε'
         self.endmarker = 'ENDMARKER'
+        
+        # Para el análisis sintáctico
+        self.tokens = []
+        self.pos = 0
+        self.token_actual = None
+        self.errores = []
         
     def _definir_gramatica(self):
         """Define la gramática LL(1) en formato diccionario"""
@@ -413,14 +425,16 @@ class ParserLL1Completo:
             ]
         }
     
-    def calcular_first(self):
-        """
-        Calcula el conjunto FIRST para cada símbolo de la gramática
-        FIRST(X) = conjunto de terminales que pueden aparecer al inicio de X
-        """
-        print("=" * 60)
-        print("CALCULANDO CONJUNTOS FIRST")
-        print("=" * 60)
+    # ===================================================================
+    # CÁLCULO DE FIRST
+    # ===================================================================
+    
+    def calcular_first(self, verbose=False):
+        """Calcula el conjunto FIRST para cada símbolo de la gramática"""
+        if verbose:
+            print("=" * 60)
+            print("CALCULANDO CONJUNTOS FIRST")
+            print("=" * 60)
         
         # Inicializar FIRST para todos los no terminales
         for no_terminal in self.gramatica.keys():
@@ -440,25 +454,27 @@ class ParserLL1Completo:
         while cambios:
             cambios = False
             iteracion += 1
-            print(f"\nIteración {iteracion}:")
+            if verbose:
+                print(f"\nIteración {iteracion}:")
             
             for no_terminal, producciones in self.gramatica.items():
                 first_anterior = len(self.first[no_terminal])
                 
                 for produccion in producciones:
-                    # Para cada producción A → X1 X2 ... Xn
                     self._agregar_first_produccion(no_terminal, produccion)
                 
                 if len(self.first[no_terminal]) > first_anterior:
                     cambios = True
-                    print(f"  FIRST({no_terminal}) = {self.first[no_terminal]}")
+                    if verbose:
+                        print(f"  FIRST({no_terminal}) = {self.first[no_terminal]}")
         
-        print("\n" + "=" * 60)
-        print("CONJUNTOS FIRST FINALES:")
-        print("=" * 60)
-        for simbolo in sorted(self.first.keys()):
-            if simbolo in self.gramatica:  # Solo no terminales
-                print(f"FIRST({simbolo:20s}) = {self.first[simbolo]}")
+        if verbose:
+            print("\n" + "=" * 60)
+            print("CONJUNTOS FIRST FINALES:")
+            print("=" * 60)
+            for simbolo in sorted(self.first.keys()):
+                if simbolo in self.gramatica:
+                    print(f"FIRST({simbolo:20s}) = {self.first[simbolo]}")
         
         return self.first
     
@@ -468,115 +484,104 @@ class ParserLL1Completo:
             self.first[no_terminal].add(self.epsilon)
             return
         
-        # Para A → X1 X2 ... Xn
         for i, simbolo in enumerate(produccion):
             if simbolo in self.first:
-                # Agregar FIRST(Xi) - {ε} a FIRST(A)
                 self.first[no_terminal].update(self.first[simbolo] - {self.epsilon})
                 
-                # Si ε no está en FIRST(Xi), terminar
                 if self.epsilon not in self.first[simbolo]:
                     break
                 
-                # Si llegamos al final y todos tenían ε, agregar ε
                 if i == len(produccion) - 1:
                     self.first[no_terminal].add(self.epsilon)
             else:
-                # Símbolo no reconocido, asumir terminal
                 self.first[no_terminal].add(simbolo)
                 break
     
-    def calcular_follow(self):
-        """
-        Calcula el conjunto FOLLOW para cada no terminal
-        FOLLOW(A) = conjunto de terminales que pueden aparecer después de A
-        """
-        print("\n" + "=" * 60)
-        print("CALCULANDO CONJUNTOS FOLLOW")
-        print("=" * 60)
+    # ===================================================================
+    # CÁLCULO DE FOLLOW
+    # ===================================================================
+    
+    def calcular_follow(self, verbose=False):
+        """Calcula el conjunto FOLLOW para cada no terminal"""
+        if verbose:
+            print("\n" + "=" * 60)
+            print("CALCULANDO CONJUNTOS FOLLOW")
+            print("=" * 60)
         
-        # Inicializar FOLLOW
         for no_terminal in self.gramatica.keys():
             self.follow[no_terminal] = set()
         
-        # FOLLOW del símbolo inicial contiene $
         simbolo_inicial = 'programa'
         self.follow[simbolo_inicial].add(self.endmarker)
         
-        # Iterar hasta que no haya cambios
         cambios = True
         iteracion = 0
         while cambios:
             cambios = False
             iteracion += 1
-            print(f"\nIteración {iteracion}:")
+            if verbose:
+                print(f"\nIteración {iteracion}:")
             
             for no_terminal, producciones in self.gramatica.items():
                 for produccion in producciones:
                     if produccion[0] == self.epsilon:
                         continue
                     
-                    # Para cada símbolo en la producción
                     for i, simbolo in enumerate(produccion):
                         if simbolo not in self.gramatica:
-                            continue  # Es terminal
+                            continue
                         
                         follow_anterior = len(self.follow[simbolo])
                         
-                        # Si hay símbolos después
                         if i < len(produccion) - 1:
                             siguiente = produccion[i + 1]
                             
-                            # Agregar FIRST(siguiente) - {ε} a FOLLOW(simbolo)
                             if siguiente in self.first:
                                 self.follow[simbolo].update(
                                     self.first[siguiente] - {self.epsilon}
                                 )
                             
-                            # Si ε está en FIRST(siguiente), agregar FOLLOW(no_terminal)
                             if siguiente in self.first and self.epsilon in self.first[siguiente]:
                                 self.follow[simbolo].update(self.follow[no_terminal])
                         else:
-                            # Es el último símbolo, agregar FOLLOW(no_terminal)
                             self.follow[simbolo].update(self.follow[no_terminal])
                         
                         if len(self.follow[simbolo]) > follow_anterior:
                             cambios = True
-                            print(f"  FOLLOW({simbolo}) = {self.follow[simbolo]}")
+                            if verbose:
+                                print(f"  FOLLOW({simbolo}) = {self.follow[simbolo]}")
         
-        print("\n" + "=" * 60)
-        print("CONJUNTOS FOLLOW FINALES:")
-        print("=" * 60)
-        for simbolo in sorted(self.follow.keys()):
-            print(f"FOLLOW({simbolo:20s}) = {self.follow[simbolo]}")
+        if verbose:
+            print("\n" + "=" * 60)
+            print("CONJUNTOS FOLLOW FINALES:")
+            print("=" * 60)
+            for simbolo in sorted(self.follow.keys()):
+                print(f"FOLLOW({simbolo:20s}) = {self.follow[simbolo]}")
         
         return self.follow
     
-    def construir_tabla_parsing(self):
-        """
-        Construye la tabla de análisis sintáctico LL(1)
-        Tabla[A, a] indica qué producción usar cuando:
-        - A es el no terminal en el tope de la pila
-        - a es el terminal actual en la entrada
-        """
-        print("\n" + "=" * 60)
-        print("CONSTRUYENDO TABLA DE PARSING LL(1)")
-        print("=" * 60)
+    # ===================================================================
+    # CONSTRUCCIÓN DE TABLA DE PARSING
+    # ===================================================================
+    
+    def construir_tabla_parsing(self, verbose=False):
+        """Construye la tabla de análisis sintáctico LL(1)"""
+        if verbose:
+            print("\n" + "=" * 60)
+            print("CONSTRUYENDO TABLA DE PARSING LL(1)")
+            print("=" * 60)
         
         conflictos = []
         
         for no_terminal, producciones in self.gramatica.items():
             for idx, produccion in enumerate(producciones):
-                # Para cada terminal en FIRST(produccion)
                 first_prod = self._calcular_first_produccion(produccion)
                 
                 for terminal in first_prod:
                     if terminal == self.epsilon:
                         continue
                     
-                    # Tabla[A, terminal] = producción
                     if (no_terminal, terminal) in self.tabla_parsing:
-                        # ¡CONFLICTO LL(1)!
                         conflictos.append({
                             'no_terminal': no_terminal,
                             'terminal': terminal,
@@ -586,9 +591,7 @@ class ParserLL1Completo:
                     else:
                         self.tabla_parsing[(no_terminal, terminal)] = produccion
                 
-                # Si ε está en FIRST(produccion)
                 if self.epsilon in first_prod:
-                    # Para cada terminal en FOLLOW(A)
                     for terminal in self.follow[no_terminal]:
                         if (no_terminal, terminal) in self.tabla_parsing:
                             conflictos.append({
@@ -600,28 +603,22 @@ class ParserLL1Completo:
                         else:
                             self.tabla_parsing[(no_terminal, terminal)] = produccion
         
-        if conflictos:
-            print("\n⚠️  CONFLICTOS LL(1) DETECTADOS:")
-            for i, conflicto in enumerate(conflictos, 1):
-                print(f"\n  Conflicto {i}:")
-                print(f"    No terminal: {conflicto['no_terminal']}")
-                print(f"    Terminal: {conflicto['terminal']}")
-                print(f"    Producción 1: {conflicto['produccion1']}")
-                print(f"    Producción 2: {conflicto['produccion2']}")
-            print("\n  ❌ LA GRAMÁTICA NO ES LL(1)")
-        else:
-            print("\n✓ No se detectaron conflictos - La gramática es LL(1)")
-        
-        # Mostrar tabla (primeras entradas)
-        print("\n" + "=" * 60)
-        print("TABLA DE PARSING (muestra):")
-        print("=" * 60)
-        count = 0
-        for (nt, term), prod in sorted(self.tabla_parsing.items()):
-            if count < 20:  # Mostrar solo primeras 20 entradas
-                print(f"  Tabla[{nt:15s}, {term:15s}] = {prod}")
-                count += 1
-        print(f"  ... ({len(self.tabla_parsing)} entradas totales)")
+        if verbose:
+            if conflictos:
+                print("\n⚠️  CONFLICTOS LL(1) DETECTADOS:")
+                for i, conflicto in enumerate(conflictos, 1):
+                    print(f"\n  Conflicto {i}:")
+                    print(f"    No terminal: {conflicto['no_terminal']}")
+                    print(f"    Terminal: {conflicto['terminal']}")
+                    print(f"    Producción 1: {conflicto['produccion1']}")
+                    print(f"    Producción 2: {conflicto['produccion2']}")
+                print("\n  ❌ LA GRAMÁTICA NO ES LL(1)")
+            else:
+                print("\n✓ No se detectaron conflictos - La gramática es LL(1)")
+            
+            print("\n" + "=" * 60)
+            print(f"TABLA DE PARSING: {len(self.tabla_parsing)} entradas")
+            print("=" * 60)
         
         return self.tabla_parsing, conflictos
     
@@ -655,48 +652,67 @@ class ParserLL1Completo:
                         terminales.add(simbolo)
         return terminales
     
-    def verificar_ll1(self):
-        """Verifica si la gramática es LL(1)"""
-        print("\n" + "=" * 60)
-        print("VERIFICACIÓN LL(1)")
-        print("=" * 60)
+    # ===================================================================
+    # ANÁLISIS SINTÁCTICO
+    # ===================================================================
+    
+    def parsear(self, tokens):
+        """Analiza sintácticamente una lista de tokens"""
+        self.tokens = tokens
+        self.pos = 0
+        self.token_actual = tokens[0] if tokens else None
+        self.errores = []
         
-        es_ll1 = True
+        try:
+            self._parsear_no_terminal('programa')
+            print("✓ Análisis sintáctico completado exitosamente")
+            return True
+        except SyntaxError as e:
+            print(f"✗ {e}")
+            return False
+    
+    def _parsear_no_terminal(self, no_terminal):
+        """Parsea un no terminal usando la tabla de parsing"""
+        if no_terminal == self.epsilon:
+            return
         
-        # Verificar que no haya recursión izquierda
-        print("\n1. Verificando recursión izquierda...")
-        tiene_rec_izq = False
-        for no_terminal, producciones in self.gramatica.items():
-            for produccion in producciones:
-                if produccion[0] == no_terminal:
-                    print(f"   ❌ {no_terminal} → {' '.join(produccion)} (recursión izquierda)")
-                    tiene_rec_izq = True
-                    es_ll1 = False
+        terminal_actual = self.token_actual.tipo
         
-        if not tiene_rec_izq:
-            print("   ✓ No hay recursión izquierda")
-        
-        # Verificar ambigüedad con FIRST/FOLLOW
-        print("\n2. Verificando condición LL(1) con FIRST/FOLLOW...")
-        for no_terminal, producciones in self.gramatica.items():
-            for i, prod1 in enumerate(producciones):
-                for prod2 in producciones[i+1:]:
-                    first1 = self._calcular_first_produccion(prod1)
-                    first2 = self._calcular_first_produccion(prod2)
-                    
-                    interseccion = first1 & first2
-                    if interseccion:
-                        print(f"   ❌ {no_terminal}: FIRST({prod1}) ∩ FIRST({prod2}) = {interseccion}")
-                        es_ll1 = False
-        
-        print("\n" + "=" * 60)
-        if es_ll1:
-            print("RESULTADO: ✓ La gramática ES LL(1)")
+        # Buscar en la tabla de parsing
+        if (no_terminal, terminal_actual) in self.tabla_parsing:
+            produccion = self.tabla_parsing[(no_terminal, terminal_actual)]
+            
+            # Aplicar la producción
+            for simbolo in produccion:
+                if simbolo == self.epsilon:
+                    continue
+                elif simbolo in self.gramatica:
+                    # Es un no terminal
+                    self._parsear_no_terminal(simbolo)
+                else:
+                    # Es un terminal
+                    self._match(simbolo)
         else:
-            print("RESULTADO: ❌ La gramática NO es LL(1)")
-        print("=" * 60)
-        
-        return es_ll1
+            self._error(f"No hay regla para ({no_terminal}, {terminal_actual})")
+    
+    def _match(self, tipo_esperado):
+        """Verifica y consume un token del tipo esperado"""
+        if self.token_actual.tipo == tipo_esperado:
+            self._avanzar()
+        else:
+            self._error(f"Se esperaba '{tipo_esperado}' pero se encontró '{self.token_actual.tipo}'")
+    
+    def _avanzar(self):
+        """Avanza al siguiente token"""
+        if self.pos < len(self.tokens) - 1:
+            self.pos += 1
+            self.token_actual = self.tokens[self.pos]
+    
+    def _error(self, mensaje):
+        """Registra un error sintáctico"""
+        error_msg = f"Error sintáctico en línea {self.token_actual.fila}, columna {self.token_actual.columna}: {mensaje}"
+        self.errores.append(error_msg)
+        raise SyntaxError(error_msg)
 
 
 # ===================================================================
@@ -704,29 +720,111 @@ class ParserLL1Completo:
 # ===================================================================
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("ANALIZADOR LL(1) COMPLETO")
-    print("Parser con cálculo de FIRST, FOLLOW y Tabla de Parsing")
-    print("=" * 60)
+    if len(sys.argv) < 2:
+        print("Uso: python parser_ll1.py <opcion> [archivo.py]")
+        print("\nOpciones:")
+        print("  --analizar <archivo>  : Analiza sintácticamente un archivo")
+        print("  --tablas              : Muestra FIRST, FOLLOW y tabla de parsing")
+        print("  --todo <archivo>      : Muestra tablas y analiza el archivo")
+        sys.exit(1)
+    
+    opcion = sys.argv[1]
     
     parser = ParserLL1Completo()
     
-    # Paso 1: Calcular FIRST
-    parser.calcular_first()
+    if opcion == "--tablas":
+        # Solo mostrar las tablas
+        parser.calcular_first(verbose=True)
+        parser.calcular_follow(verbose=True)
+        parser.construir_tabla_parsing(verbose=True)
+        
+    elif opcion == "--analizar" and len(sys.argv) == 3:
+        # Solo analizar archivo
+        archivo = sys.argv[2]
+        
+        try:
+            from analizador_lex import analizador_lexico
+            
+            with open(archivo, 'r', encoding='utf-8') as f:
+                codigo = f.read()
+            
+            print(f"Analizando archivo: {archivo}")
+            print("=" * 60)
+            
+            print("\n[1] Análisis Léxico...")
+            tokens = analizador_lexico(codigo)
+            print(f"✓ Se generaron {len(tokens)} tokens")
+            
+            print("\n[2] Preparando parser LL(1)...")
+            parser.calcular_first(verbose=False)
+            parser.calcular_follow(verbose=False)
+            parser.construir_tabla_parsing(verbose=False)
+            print("✓ Tablas FIRST, FOLLOW y Parsing construidas")
+            
+            print("\n[3] Análisis Sintáctico...")
+            resultado = parser.parsear(tokens)
+            
+            print("\n" + "=" * 60)
+            if resultado:
+                print("RESULTADO: ✓ El archivo es sintácticamente correcto")
+                sys.exit(0)
+            else:
+                print("RESULTADO: ✗ Se encontraron errores sintácticos")
+                sys.exit(1)
+                
+        except FileNotFoundError:
+            print(f"✗ Error: No se encontró el archivo '{archivo}'")
+            sys.exit(1)
+        except Exception as e:
+            print(f"✗ Error durante el análisis: {e}")
+            sys.exit(1)
     
-    # Paso 2: Calcular FOLLOW
-    parser.calcular_follow()
+    elif opcion == "--todo" and len(sys.argv) == 3:
+        # Mostrar tablas y analizar
+        archivo = sys.argv[2]
+        
+        try:
+            from analizador_lex import analizador_lexico
+            
+            # Mostrar tablas
+            parser.calcular_first(verbose=True)
+            parser.calcular_follow(verbose=True)
+            parser.construir_tabla_parsing(verbose=True)
+            
+            # Analizar archivo
+            with open(archivo, 'r', encoding='utf-8') as f:
+                codigo = f.read()
+            
+            print("\n" + "=" * 60)
+            print(f"ANALIZANDO ARCHIVO: {archivo}")
+            print("=" * 60)
+            
+            print("\n[1] Análisis Léxico...")
+            tokens = analizador_lexico(codigo)
+            print(f"✓ Se generaron {len(tokens)} tokens")
+            
+            print("\n[2] Análisis Sintáctico...")
+            resultado = parser.parsear(tokens)
+            
+            print("\n" + "=" * 60)
+            if resultado:
+                print("RESULTADO: ✓ El archivo es sintácticamente correcto")
+                sys.exit(0)
+            else:
+                print("RESULTADO: ✗ Se encontraron errores sintácticos")
+                sys.exit(1)
+                
+        except FileNotFoundError:
+            print(f"✗ Error: No se encontró el archivo '{archivo}'")
+            sys.exit(1)
+        except Exception as e:
+            print(f"✗ Error durante el análisis: {e}")
+            sys.exit(1)
     
-    # Paso 3: Construir tabla de parsing
-    tabla, conflictos = parser.construir_tabla_parsing()
-    
-    # Paso 4: Verificar si es LL(1)
-    es_ll1 = parser.verificar_ll1()
-    
-    print("\n" + "=" * 60)
-    print("ANÁLISIS COMPLETADO")
-    print("=" * 60)
-    print(f"No terminales: {len(parser.gramatica)}")
-    print(f"Terminales únicos: {len(parser._obtener_terminales())}")
-    print(f"Entradas en tabla: {len(tabla)}")
-    print(f"Conflictos detectados: {len(conflictos)}")
+    else:
+        print("✗ Opción no válida")
+        print("\nUso correcto:")
+        print("  python parser_ll1.py --tablas")
+        print("  python parser_ll1.py --analizar archivo.py")
+        print("  python parser_ll1.py --todo archivo.py")
+        sys.exit(1)

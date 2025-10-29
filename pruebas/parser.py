@@ -21,17 +21,12 @@ class ParserLL1:
             return False
 
     def error(self, mensaje):
-        """Registra un error sintáctico"""
+
         error_msg = f"Error sintáctico en línea {self.token_actual.fila}, columna {self.token_actual.columna}: {mensaje}"
         self.errores.append(error_msg)
         raise SyntaxError(error_msg)
 
-    # ===================================================================
-    # SÍMBOLO INICIAL
-    # ===================================================================
-
     def programa(self):
-        """programa → NEWLINE programa | sentencias ENDMARKER"""
         while self.token_actual.tipo == "NEWLINE":
             self.match("NEWLINE")
         self.sentencias()
