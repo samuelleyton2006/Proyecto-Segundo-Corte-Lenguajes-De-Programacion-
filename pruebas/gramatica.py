@@ -1,3 +1,3 @@
-x=1
-if x >:
-    print("error")
+
+arr[j] = arr[j + 1] 
+arr[j + 1] = arr[j+1]
