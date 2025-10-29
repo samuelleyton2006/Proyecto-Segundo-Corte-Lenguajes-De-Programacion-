@@ -199,7 +199,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     archivo_py = sys.argv[1]
-    archivo_gramatica = "GRAMATICA_SELECCIONADA.txt"
+    archivo_gramatica = "gramatica.txt"
 
     # Cargar gramática
     gramatica, inicial = leer_gramatica(archivo_gramatica)

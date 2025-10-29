@@ -95,21 +95,38 @@ def es_cadena(char):
 # -----------------------------
 def analizador_lexico(codigo):
     tokens = []
+    # Usaremos iter() para tener contexto de la última línea
     lineas = codigo.split('\n')
     indent_stack = [0]
     fila = 0
-    lista_tokens = sorted(char_tokens.items(), key=lambda x: len(x[1]), reverse=True)
 
-    for linea in lineas:
+    lista_tokens = sorted(char_tokens.items(), key=lambda x: len(x[1]), reverse=True)
+    
+    # ----------------------------------------------------
+    # Nueva lista que combina el código con el NEWLINE final 
+    # (para asegurar el último NEWLINE es procesado correctamente)
+    # ----------------------------------------------------
+    lineas_procesar = [linea for linea in lineas]
+    
+    for linea in lineas_procesar:
         fila += 1
         columna = 0
-
-        # Manejo de indentación
-        if linea.strip() == "":
+        
+        # 1. Procesar NEWLINE (si no es la primera línea)
+        if fila > 1:
             tokens.append(Token("NEWLINE", None, fila, 0))
+            
+        # Omitir líneas vacías (ya manejado, pero limpio)
+        if not linea.strip():
             continue
+
+        # 2. Calcular la indentación y emitir INDENT/DEDENT
+        #    Buscar la posición del primer carácter no-espacio
         indent = len(linea) - len(linea.lstrip(' '))
-        columna = 0 
+        
+        # Eliminar el espacio en blanco de indentación antes de tokenizar
+        columna = indent
+        
         if indent > indent_stack[-1]:
             indent_stack.append(indent)
             tokens.append(Token("INDENT", None, fila, 1))
@@ -117,22 +134,32 @@ def analizador_lexico(codigo):
             while indent < indent_stack[-1]:
                 indent_stack.pop()
                 tokens.append(Token("DEDENT", None, fila, 1))
+        
         if indent != indent_stack[-1]:
             raise Exception(f"Error de indentación en la línea {fila}")
 
+        # 3. Tokenizar el contenido (iniciando después de la indentación)
         while columna < len(linea):
             char = linea[columna]
-
+            
+            # ------------------------------------------------------------------
+            # *IMPORTANTE*: Eliminar el manejo de espacios aquí, 
+            # ya que la indentación ya fue procesada, y solo buscamos tokens.
+            # Los espacios INTERNOS entre tokens se ignoran
+            # ------------------------------------------------------------------
             if char.isspace():
                 columna += 1
                 continue
-
+            
+            # ... (Resto de la lógica de tokenización, sin cambios) ...
+            
             # Comentarios
             if char == '#':
                 break  # Ignorar comentarios
-
+            
             # Identificadores o palabras reservadas
             if es_identificador(char):
+                # ... (Lógica de NAME) ...
                 start_col = columna
                 palabra = ""
                 while columna < len(linea) and (linea[columna].isalnum() or linea[columna] == '_'):
@@ -146,15 +173,22 @@ def analizador_lexico(codigo):
 
             # Números
             if es_digito(char):
+                # ... (Lógica de NUMBER) ...
                 start_col = columna
                 numero = ""
-                while columna < len(linea) and linea[columna].isdigit():
+                has_dot = False
+                while columna < len(linea) and (linea[columna].isdigit() or linea[columna] == '.'):
+                    if linea[columna] == '.':
+                        if has_dot:
+                             # Manejar doble punto como error o como parte de un token (como elipsis)
+                             # Para simplificar, asumiremos que solo se permite un punto decimal
+                             break
+                        has_dot = True
                     numero += linea[columna]
                     columna += 1
                 tokens.append(Token("NUMBER", numero, fila, start_col))
                 continue
-
-            # Cadenas
+            
             if es_cadena(char):
                 quote = char
                 start_col = columna
@@ -169,7 +203,6 @@ def analizador_lexico(codigo):
                 tokens.append(Token("STRING", valor, fila, start_col))
                 continue
 
-            # Operadores y símbolos
             matched = False
             for nombre, simbolo in lista_tokens:
                 if linea[columna:].startswith(simbolo):
@@ -180,17 +213,11 @@ def analizador_lexico(codigo):
             if matched:
                 continue
 
-            # Error si ningún token coincide
             raise Exception(f"Error léxico: carácter inesperado '{char}' en línea {fila}, columna {columna}")
 
-        # Fin de línea
-        tokens.append(Token("NEWLINE", None, fila, len(linea)))
-
-    # DEDENT final
     while len(indent_stack) > 1:
         indent_stack.pop()
         tokens.append(Token("DEDENT", None, fila, 1))
 
-    # Token final
     tokens.append(Token("ENDMARKER", None, fila + 1, 0))
     return tokens

@@ -391,7 +391,6 @@ inversion:
 
 comparison:
     | bitwise_or comparison_tail
-    | bitwise_or
 
 comparison_tail:
     | comp_op bitwise_or comparison_tail
@@ -534,4 +533,4 @@ slice_step_opt:
     | tk_dos_puntos expression_opt
     | ε
 block:
-      INDENT statements DEDENT
+    | NEWLINE INDENT statements DEDENT
