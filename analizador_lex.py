@@ -109,17 +109,20 @@ def analizador_lexico(codigo):
             tokens.append(Token("NEWLINE", None, fila, 0))
             continue
         indent = len(linea) - len(linea.lstrip(' '))
+        columna = 0 
         if indent > indent_stack[-1]:
-            tokens.append(Token("INDENT", None, fila, 1))
             indent_stack.append(indent)
-        while indent < indent_stack[-1]:
-            indent_stack.pop()
-            tokens.append(Token("DEDENT", None, fila, 1))
+            tokens.append(Token("INDENT", None, fila, 1))
+        elif indent < indent_stack[-1]:
+            while indent < indent_stack[-1]:
+                indent_stack.pop()
+                tokens.append(Token("DEDENT", None, fila, 1))
+        if indent != indent_stack[-1]:
+            raise Exception(f"Error de indentación en la línea {fila}")
 
         while columna < len(linea):
             char = linea[columna]
 
-            # Ignorar espacios
             if char.isspace():
                 columna += 1
                 continue
@@ -191,20 +194,3 @@ def analizador_lexico(codigo):
     # Token final
     tokens.append(Token("ENDMARKER", None, fila + 1, 0))
     return tokens
-
-
-# -----------------------------
-# MAIN para probar lexer
-# -----------------------------
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Modo de uso: python lexer.py archivo.py")
-        sys.exit(1)
-
-    archivo_entrada = sys.argv[1]
-    with open(archivo_entrada, 'r', encoding='utf-8') as file:
-        codigo = file.read()
-
-    tokens = analizador_lexico(codigo)
-    for t in tokens:
-        print(t)
