@@ -52,7 +52,8 @@ class ParserLL1:
             self.sentencia_compuesta()
         else:
             self.sentencia_simple()
-            self.match("NEWLINE")
+            if self.token_actual.tipo == "NEWLINE":
+                self.match("NEWLINE")
 
     def sentencia_simple(self):
         """sentencia_simple → id sentencia_id | expresion | return_stmt | break | continue | pass | del_stmt | import_stmt | print_stmt"""
@@ -579,7 +580,10 @@ def parsear(tokens):
         return False
 
 
-# Ejemplo de uso:
+# ===================================================================
+# EJECUCIÓN DESDE LÍNEA DE COMANDOS
+# ===================================================================
+
 if __name__ == "__main__":
     import sys
     from analizador_lex import analizador_lexico  # Asume que el lexer está en lexer.py

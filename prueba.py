@@ -1,3 +1,6 @@
-x = 10
-y = 20
-z = 30
+try:
+    x = 1 / 0
+except ZeroDivisionError:
+    print("Error")
+finally:
+    print("Fin")
