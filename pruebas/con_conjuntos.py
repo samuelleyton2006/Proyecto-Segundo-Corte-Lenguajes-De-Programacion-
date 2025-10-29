@@ -67,7 +67,14 @@ class ParserLL1Completo:
                 ['tk_corchete_izq', 'expresion', 'tk_corchete_der', 'tk_asig', 'expresion'],
                 ['tk_par_izq', 'args_opt', 'tk_par_der'],
                 ['tk_punto', 'id', 'sentencia_id_dot']
+
             ],
+            #Ejemplos:
+            #x = 2
+            #lista[0] = 1
+            #f(3)
+            #obj.atributo = 2
+
          
             'sentencia_self': [
                 ['tk_punto', 'id', 'sentencia_id_dot'],
@@ -171,10 +178,23 @@ class ParserLL1Completo:
             ],
             
             'parametro': [
-                ['id', 'param_default'],
+                ['id', 'param_anotacion'], #param_default
                 ['self', 'param_default']
             ],
+            'param_anotacion': [
+                ['tk_dos_puntos', 'tipo_anotacion', 'param_default'],
+                ['param_default']
+            ],
             
+            'tipo_anotacion': [
+                ['id', 'tipo_suffix']
+            ],
+
+            'tipo_suffix': [
+                ['tk_punto', 'id', 'tipo_suffix'],
+                ['tk_corchete_izq', 'tipo_anotacion', 'tk_corchete_der', 'tipo_suffix'],
+                ['ε']
+            ],
             'param_default': [
                 ['tk_asig', 'expresion'],
                 ['ε']
@@ -423,9 +443,7 @@ class ParserLL1Completo:
             ]
         }
     
-    # ===================================================================
     # CÁLCULO DE FIRST
-    # ===================================================================
     
     def calcular_first(self, verbose=False):
         """Calcula el conjunto FIRST para cada símbolo de la gramática"""
@@ -558,9 +576,7 @@ class ParserLL1Completo:
         
         return self.follow
     
-    # ===================================================================
-    # CONSTRUCCIÓN DE TABLA DE PARSING
-    # ===================================================================
+    # CONSTRUCCION DE TABLA DE PARSING
     
     def construir_tabla_parsing(self, verbose=False):
         """Construye la tabla de análisis sintáctico LL(1)"""
@@ -600,20 +616,7 @@ class ParserLL1Completo:
                             })
                         else:
                             self.tabla_parsing[(no_terminal, terminal)] = produccion
-        """
-        if verbose:
-            if conflictos:
-                print("\n⚠️  CONFLICTOS LL(1) DETECTADOS:")
-                for i, conflicto in enumerate(conflictos, 1):
-                    print(f"\n  Conflicto {i}:")
-                    print(f"    No terminal: {conflicto['no_terminal']}")
-                    print(f"    Terminal: {conflicto['terminal']}")
-                    print(f"    Producción 1: {conflicto['produccion1']}")
-                    print(f"    Producción 2: {conflicto['produccion2']}")
-                print("\n  ❌ LA GRAMÁTICA NO ES LL(1)")
-            else:
-                print("\n✓ No se detectaron conflictos - La gramática es LL(1)")
-           """ 
+
         print("\n" + "=" * 60)
         print(f"TABLA DE PARSING: {len(self.tabla_parsing)} entradas")
         print("=" * 60)
@@ -651,9 +654,7 @@ class ParserLL1Completo:
                         terminales.add(simbolo)
         return terminales
     
-    # ===================================================================
     # ANÁLISIS SINTÁCTICO
-    # ===================================================================
     
     def parsear(self, tokens):
         """Analiza sintácticamente una lista de tokens"""
@@ -692,7 +693,7 @@ class ParserLL1Completo:
                     # Es un terminal
                     self._match(simbolo)
         else:
-            self._error(f"No hay regla para ({no_terminal}, {terminal_actual})")
+            self._error(f"Sintaxis invalida({no_terminal}, {terminal_actual})")
     
     def _match(self, tipo_esperado):
         """Verifica y consume un token del tipo esperado"""

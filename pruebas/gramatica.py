@@ -1,1 +1,1 @@
-x = not
+x = and  
