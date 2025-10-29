@@ -18,6 +18,8 @@ def analizador_lexico(codigo):
     lineas = codigo.split("\n")
     indent_stack = [0]
     fila = 0
+    dentro_string_multilinea = False
+    delimitador_multilinea = ""
 
     # Mapeo directo de símbolos simples a gramática
   
@@ -25,6 +27,12 @@ def analizador_lexico(codigo):
     for linea in lineas:
         fila += 1
         columna = 0
+        if dentro_string_multilinea:
+            if delimitador_multilinea in linea:
+                dentro_string_multilinea = False
+                delimitador_multilinea = ""
+            continue 
+        
         if fila > 1:
             tokens.append(Token("NEWLINE", None, fila, 0))
 
@@ -56,7 +64,13 @@ def analizador_lexico(codigo):
             # Comentarios
             if char == '#':
                 break
+                
+            if linea[columna:columna + 3] in ('"""', "'''"):
 
+                dentro_string_multilinea = True
+                delimitador_multilinea = linea[columna:columna + 3]
+                columna += 3
+                continue  # ignorar bloque completo
             # Identificador o palabra reservada
             if char.isalpha() or char == '_':
                 start_col = columna
@@ -100,6 +114,7 @@ def analizador_lexico(codigo):
 
             # Strings
             if char == '"' or char == "'":
+
                 quote = char
                 start_col = columna
                 columna += 1
