@@ -466,15 +466,15 @@ class ParserLL1Completo:
                 if len(self.first[no_terminal]) > first_anterior:
                     cambios = True
                     if verbose:
-                        print(f"  FIRST({no_terminal}) = {self.first[no_terminal]}")
+                        print(f"  PRIMEROS({no_terminal}) = {self.first[no_terminal]}")
         
         if verbose:
             print("\n" + "=" * 60)
-            print("CONJUNTOS FIRST FINALES:")
+            print("CONJUNTOS PRIMEROS:")
             print("=" * 60)
             for simbolo in sorted(self.first.keys()):
                 if simbolo in self.gramatica:
-                    print(f"FIRST({simbolo:20s}) = {self.first[simbolo]}")
+                    print(f"PRIMEROS({simbolo:20s}) = {self.first[simbolo]}")
         
         return self.first
     
@@ -505,7 +505,7 @@ class ParserLL1Completo:
         """Calcula el conjunto FOLLOW para cada no terminal"""
         if verbose:
             print("\n" + "=" * 60)
-            print("CALCULANDO CONJUNTOS FOLLOW")
+            print("CALCULANDO CONJUNTOS SIGUIENTES")
             print("=" * 60)
         
         for no_terminal in self.gramatica.keys():
@@ -549,14 +549,14 @@ class ParserLL1Completo:
                         if len(self.follow[simbolo]) > follow_anterior:
                             cambios = True
                             if verbose:
-                                print(f"  FOLLOW({simbolo}) = {self.follow[simbolo]}")
+                                print(f"  SIGUIENTES({simbolo}) = {self.follow[simbolo]}")
         
         if verbose:
             print("\n" + "=" * 60)
-            print("CONJUNTOS FOLLOW FINALES:")
+            print("CONJUNTOS SIGUIENTES INALES:")
             print("=" * 60)
             for simbolo in sorted(self.follow.keys()):
-                print(f"FOLLOW({simbolo:20s}) = {self.follow[simbolo]}")
+                print(f"SIGUIENTES({simbolo:20s}) = {self.follow[simbolo]}")
         
         return self.follow
     
@@ -602,7 +602,7 @@ class ParserLL1Completo:
                             })
                         else:
                             self.tabla_parsing[(no_terminal, terminal)] = produccion
-        
+        """
         if verbose:
             if conflictos:
                 print("\n⚠️  CONFLICTOS LL(1) DETECTADOS:")
@@ -615,10 +615,11 @@ class ParserLL1Completo:
                 print("\n  ❌ LA GRAMÁTICA NO ES LL(1)")
             else:
                 print("\n✓ No se detectaron conflictos - La gramática es LL(1)")
-            
-            print("\n" + "=" * 60)
-            print(f"TABLA DE PARSING: {len(self.tabla_parsing)} entradas")
-            print("=" * 60)
+           """ 
+        print("\n" + "=" * 60)
+        print(f"TABLA DE PARSING: {len(self.tabla_parsing)} entradas")
+        print("=" * 60)
+        print(self.tabla_parsing)
         
         return self.tabla_parsing, conflictos
     
