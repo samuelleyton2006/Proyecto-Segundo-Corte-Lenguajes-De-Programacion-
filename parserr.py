@@ -114,13 +114,18 @@ def construir_tabla_LL1(gramatica, primeros, siguientes):
             primeros_prod = set()
             vacio = True
             for s in prod:
-                primeros_prod |= (primeros[s] if s in primeros else {s})
-                if "ε" not in (primeros[s] if s in primeros else {s}):
+                if s in primeros:
+                    primeros_prod |= (primeros[s] - {"ε"})
+                    if "ε" not in primeros[s]:
+                        vacio = False
+                        break
+                else:
+                    primeros_prod.add(s)
                     vacio = False
                     break
             if vacio:
                 primeros_prod |= siguientes[nt]
-            for t in primeros_prod - {"ε"}:
+            for t in primeros_prod:
                 tabla[(nt, t)] = prod
     return tabla
 
@@ -199,7 +204,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     archivo_py = sys.argv[1]
-    archivo_gramatica = "gramatica.txt"
+    archivo_gramatica = "gramarr.txt"
 
     # Cargar gramática
     gramatica, inicial = leer_gramatica(archivo_gramatica)
