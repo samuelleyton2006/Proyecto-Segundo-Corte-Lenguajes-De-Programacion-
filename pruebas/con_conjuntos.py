@@ -1,14 +1,8 @@
-"""
-Parser LL(1) COMPLETO con cálculo de conjuntos FIRST, FOLLOW, Tabla de Análisis
-Y análisis sintáctico de archivos Python
-"""
-
 import sys
 
 
 class ParserLL1Completo:
     def __init__(self):
-        # Gramática en formato: 'no_terminal' -> [['produccion1'], ['produccion2'], ...]
         self.gramatica = self._definir_gramatica()
         
         # Conjuntos calculados
@@ -20,21 +14,23 @@ class ParserLL1Completo:
         self.epsilon = 'ε'
         self.endmarker = 'ENDMARKER'
         
-        # Para el análisis sintáctico
         self.tokens = []
         self.pos = 0
         self.token_actual = None
         self.errores = []
         
     def _definir_gramatica(self):
-        """Define la gramática LL(1) en formato diccionario"""
         return {
-            # Símbolo inicial
+            # Simbolo inicial
             'programa': [
                 ['NEWLINE', 'programa'],
-                ['sentencias', 'ENDMARKER']
+                ['sentencias', 'programa_tail']
             ],
+            'programa_tail': [
+                ['ENDMARKER'],
+                ['NEWLINE']
             
+            ],
             # Sentencias
             'sentencias': [
                 ['sentencia', 'sentencias'],
@@ -52,6 +48,7 @@ class ParserLL1Completo:
             ],
             
             'sentencia_simple': [
+
                 ['id', 'sentencia_id'],
                 ['self', 'sentencia_self'],
                 ['return_stmt'],
@@ -61,6 +58,7 @@ class ParserLL1Completo:
                 ['del_stmt'],
                 ['import_stmt'],
                 ['print_stmt']
+                
             ],
             
             # Sentencias con id y self
@@ -70,7 +68,7 @@ class ParserLL1Completo:
                 ['tk_par_izq', 'args_opt', 'tk_par_der'],
                 ['tk_punto', 'id', 'sentencia_id_dot']
             ],
-            
+         
             'sentencia_self': [
                 ['tk_punto', 'id', 'sentencia_id_dot'],
                 ['tk_par_izq', 'args_opt', 'tk_par_der']
