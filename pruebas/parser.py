@@ -44,7 +44,10 @@ class ParserLL1:
     def sentencias(self):
         """sentencias → sentencia sentencias | ε"""
         while self.token_actual.tipo not in ["ENDMARKER", "TABend"]:
-            self.sentencia()
+            if self.token_actual.tipo == "NEWLINE":
+                self.match("NEWLINE")
+            else:
+                self.sentencia()
 
     def sentencia(self):
         """sentencia → sentencia_simple NEWLINE | sentencia_compuesta"""
@@ -77,8 +80,12 @@ class ParserLL1:
             self.import_stmt()
         elif self.token_actual.tipo == "print":
             self.print_stmt()
-        else:
+        elif self.token_actual.tipo in ["tk_entero", "tk_cadena", "True", "False", "None", 
+                                         "tk_par_izq", "tk_corchete_izq", "tk_llave_izq",
+                                         "tk_suma", "tk_resta", "not"]:
             self.expresion()
+        else:
+            self.error(f"Token inesperado '{self.token_actual.tipo}' al inicio de sentencia")
     
     def sentencia_self(self):
         """sentencia_self → tk_punto id sentencia_id_dot | tk_par_izq args_opt tk_par_der"""
@@ -357,6 +364,9 @@ class ParserLL1:
         """expr_or_prime → or expr_and expr_or_prime | ε"""
         if self.token_actual.tipo == "or":
             self.match("or")
+            # Verificar que después del operador haya algo válido
+            if self.token_actual.tipo in ["tk_dos_puntos", "NEWLINE", "ENDMARKER", "tk_par_der", "tk_corchete_der", "tk_coma"]:
+                self.error(f"Expresión incompleta después de 'or'")
             self.expr_and()
             self.expr_or_prime()
 
@@ -369,6 +379,9 @@ class ParserLL1:
         """expr_and_prime → and expr_not expr_and_prime | ε"""
         if self.token_actual.tipo == "and":
             self.match("and")
+            # Verificar que después del operador haya algo válido
+            if self.token_actual.tipo in ["tk_dos_puntos", "NEWLINE", "ENDMARKER", "tk_par_der", "tk_corchete_der", "tk_coma"]:
+                self.error(f"Expresión incompleta después de 'and'")
             self.expr_not()
             self.expr_and_prime()
 
@@ -376,6 +389,9 @@ class ParserLL1:
         """expr_not → not expr_not | expr_comparacion"""
         if self.token_actual.tipo == "not":
             self.match("not")
+            # Verificar que después de 'not' haya algo válido
+            if self.token_actual.tipo in ["tk_dos_puntos", "NEWLINE", "ENDMARKER", "tk_par_der", "tk_corchete_der", "tk_coma"]:
+                self.error(f"Expresión incompleta después de 'not'")
             self.expr_not()
         else:
             self.expr_comparacion()
@@ -399,7 +415,13 @@ class ParserLL1:
             if self.token_actual.tipo == "not":
                 self.match("not")
         elif self.token_actual.tipo in ["tk_igual", "tk_distinto", "tk_menor", "tk_menor_igual", "tk_mayor", "tk_mayor_igual", "in"]:
+            tipo = self.token_actual.tipo
             self.match(self.token_actual.tipo)
+            # Verificar que después del operador haya algo válido
+            if self.token_actual.tipo in ["tk_dos_puntos", "NEWLINE", "ENDMARKER", "tk_par_der", "tk_corchete_der"]:
+                self.error(f"Expresión incompleta después del operador de comparación")
+        else:
+            self.error(f"Se esperaba operador de comparación pero se encontró '{self.token_actual.tipo}'")
 
     def expr_aritmetica(self):
         """expr_aritmetica → termino expr_arit_prime"""
@@ -410,6 +432,9 @@ class ParserLL1:
         """expr_arit_prime → tk_suma termino expr_arit_prime | tk_resta termino expr_arit_prime | ε"""
         if self.token_actual.tipo in ["tk_suma", "tk_resta"]:
             self.match(self.token_actual.tipo)
+            # Verificar que después del operador haya algo válido para un término
+            if self.token_actual.tipo in ["tk_dos_puntos", "NEWLINE", "ENDMARKER", "tk_par_der", "tk_corchete_der", "tk_coma"]:
+                self.error(f"Expresión incompleta después del operador aritmético")
             self.termino()
             self.expr_arit_prime()
 
@@ -422,6 +447,9 @@ class ParserLL1:
         """termino_prime → tk_mult factor termino_prime | tk_div factor termino_prime | tk_modulo factor termino_prime | ε"""
         if self.token_actual.tipo in ["tk_mult", "tk_div", "tk_modulo"]:
             self.match(self.token_actual.tipo)
+            # Verificar que después del operador haya algo válido
+            if self.token_actual.tipo in ["tk_dos_puntos", "NEWLINE", "ENDMARKER", "tk_par_der", "tk_corchete_der", "tk_coma"]:
+                self.error(f"Expresión incompleta después del operador de multiplicación/división")
             self.factor()
             self.termino_prime()
 
@@ -445,6 +473,9 @@ class ParserLL1:
         """potencia_prime → tk_potencia factor | ε"""
         if self.token_actual.tipo == "tk_potencia":
             self.match("tk_potencia")
+            # Verificar que después del operador haya algo válido
+            if self.token_actual.tipo in ["tk_dos_puntos", "NEWLINE", "ENDMARKER", "tk_par_der", "tk_corchete_der", "tk_coma"]:
+                self.error(f"Expresión incompleta después del operador de potencia")
             self.factor()
 
     def atom(self):

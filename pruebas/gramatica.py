@@ -1,2 +1,3 @@
-resultado = (10 + 20))
-print(resultado)
+x=1
+if x >:
+    print("error")
