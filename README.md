@@ -53,6 +53,11 @@ self: self.atributo, self.metodo()
 
 ## 7. Características Avanzadas
 Acceso encadenado
+
+objeto.atributo.metodo().otro_atributo
+lista[0][1][2]
+funcion()(otra_funcion())
+
 Parámetros con Anotaciones de Tipo
 Expresiones complejas
 ## 8. Bloques con Indentación
