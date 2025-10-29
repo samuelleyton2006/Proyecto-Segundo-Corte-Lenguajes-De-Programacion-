@@ -1,5 +1,5 @@
 import sys
-
+from tokens_config import SIMBOLOS_INVERTIDOS
 
 class ParserLL1Completo:
     def __init__(self):
@@ -512,10 +512,7 @@ class ParserLL1Completo:
             else:
                 self.first[no_terminal].add(simbolo)
                 break
-    
-    # ===================================================================
-    # CÁLCULO DE FOLLOW
-    # ===================================================================
+
     
     def calcular_follow(self, verbose=False):
         """Calcula el conjunto FOLLOW para cada no terminal"""
@@ -579,7 +576,6 @@ class ParserLL1Completo:
     # CONSTRUCCION DE TABLA DE PARSING
     
     def construir_tabla_parsing(self, verbose=False):
-        """Construye la tabla de análisis sintáctico LL(1)"""
         if verbose:
             print("\n" + "=" * 60)
             print("CONSTRUYENDO TABLA DE PARSING LL(1)")
@@ -620,12 +616,11 @@ class ParserLL1Completo:
         print("\n" + "=" * 60)
         print(f"TABLA DE PARSING: {len(self.tabla_parsing)} entradas")
         print("=" * 60)
-        print(self.tabla_parsing)
+        #print(self.tabla_parsing)
         
         return self.tabla_parsing, conflictos
     
     def _calcular_first_produccion(self, produccion):
-        """Calcula FIRST de una producción completa"""
         resultado = set()
         
         if produccion[0] == self.epsilon:
@@ -645,7 +640,6 @@ class ParserLL1Completo:
         return resultado
     
     def _obtener_terminales(self):
-        """Extrae todos los terminales mencionados en la gramática"""
         terminales = set()
         for producciones in self.gramatica.values():
             for produccion in producciones:
@@ -657,7 +651,6 @@ class ParserLL1Completo:
     # ANÁLISIS SINTÁCTICO
     
     def parsear(self, tokens):
-        """Analiza sintácticamente una lista de tokens"""
         self.tokens = tokens
         self.pos = 0
         self.token_actual = tokens[0] if tokens else None
@@ -672,7 +665,7 @@ class ParserLL1Completo:
             return False
     
     def _parsear_no_terminal(self, no_terminal):
-        """Parsea un no terminal usando la tabla de parsing"""
+
         if no_terminal == self.epsilon:
             return
         
@@ -694,30 +687,41 @@ class ParserLL1Completo:
                     self._match(simbolo)
         else:
             self._error(f"Sintaxis invalida({no_terminal}, {terminal_actual})")
-    
+
+        
     def _match(self, tipo_esperado):
-        """Verifica y consume un token del tipo esperado"""
+
         if self.token_actual.tipo == tipo_esperado:
             self._avanzar()
         else:
-            self._error(f"Se esperaba '{tipo_esperado}' pero se encontró '{self.token_actual.tipo}'")
+            lexema_esperado = SIMBOLOS_INVERTIDOS[tipo_esperado]
+            token_encontrado = self.token_actual.valor
+        
+
+            if self.token_actual.tipo in ['TABend', 'NEWLINE', 'ENDMARKER']:
+                if tipo_esperado in ['tk_par_der', 'tk_corchete_der', 'tk_llave_der']:
+                    simbolo_esperado = SIMBOLOS_INVERTIDOS[tipo_esperado]
+                    print(f"✗ Error sintáctico en línea {self.token_actual.linea}: "
+                        f"Falta cerrar '{simbolo_esperado}'")
+                else:
+                    print(f"✗ Error sintáctico en línea {self.token_actual.linea}: "
+                        f"Se esperaba '{lexema_esperado}'")
+            else:
+                print(f"✗ Error sintáctico en línea {self.token_actual.linea}: "
+                    f"Se esperaba '{lexema_esperado}' pero se encontró '{token_encontrado}'")
+        
+            sys.exit(1)
     
     def _avanzar(self):
-        """Avanza al siguiente token"""
         if self.pos < len(self.tokens) - 1:
             self.pos += 1
             self.token_actual = self.tokens[self.pos]
     
     def _error(self, mensaje):
-        """Registra un error sintáctico"""
         error_msg = f"Error sintáctico en línea {self.token_actual.fila}, columna {self.token_actual.columna}: {mensaje}"
         self.errores.append(error_msg)
         raise SyntaxError(error_msg)
 
-
-# ===================================================================
-# FUNCIÓN PRINCIPAL
-# ===================================================================
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

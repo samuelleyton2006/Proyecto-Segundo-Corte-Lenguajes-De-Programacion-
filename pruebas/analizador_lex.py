@@ -7,24 +7,12 @@ class Token:
 
     def __repr__(self):
         return f"Token({self.tipo}, {self.valor}, {self.fila}, {self.columna})"
+from tokens_config import SIMBOLOS, PALABRAS_RESERVADAS
 
-
-# -----------------------------
-# Palabras reservadas y tipos
-# -----------------------------
-palabras_reservadas = {
-    'False', 'None', 'True', 'and', 'as', 'break', 'class', 'continue',
-    'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from',
-    'if', 'import', 'in', 'is', 'not', 'or', 'pass', 'return', 'try',
-    'while', 'print', 'self'
-}
 
 tipos_datos = {'int', 'float', 'str', 'bool', 'list', 'tuple', 'dict', 'set'}
 
-
-# -----------------------------
-# Lexer principal
-# -----------------------------
+    
 def analizador_lexico(codigo):
     tokens = []
     lineas = codigo.split("\n")
@@ -32,15 +20,7 @@ def analizador_lexico(codigo):
     fila = 0
 
     # Mapeo directo de símbolos simples a gramática
-    simbolos = {
-        '(': 'tk_par_izq', ')': 'tk_par_der', '[': 'tk_corchete_izq', ']': 'tk_corchete_der',
-        '{': 'tk_llave_izq', '}': 'tk_llave_der', ':': 'tk_dos_puntos', ',': 'tk_coma',
-        '=': 'tk_asig', '+=': 'tk_mas_asig', '-=': 'tk_menos_asig', '*=': 'tk_mult_asig',
-        '/=': 'tk_div_asig', '%=': 'tk_mod_asig', '>=': 'tk_mayor_igual', '<=': 'tk_menor_igual',
-        '==': 'tk_igual', '!=': 'tk_distinto', '>': 'tk_mayor', '<': 'tk_menor',
-        '+': 'tk_suma', '-': 'tk_resta', '*': 'tk_mult', '/': 'tk_div', '%': 'tk_modulo',
-        '**': 'tk_potencia', '.': 'tk_punto'
-    }
+  
 
     for linea in lineas:
         fila += 1
@@ -84,7 +64,7 @@ def analizador_lexico(codigo):
                 while columna < len(linea) and (linea[columna].isalnum() or linea[columna] == '_'):
                     palabra += linea[columna]
                     columna += 1
-                if palabra in palabras_reservadas:
+                if palabra in PALABRAS_RESERVADAS:
                     if palabra == 'self':
                         tokens.append(Token("self", palabra, fila, start_col))
                     else:
@@ -135,7 +115,7 @@ def analizador_lexico(codigo):
 
             # Operadores y símbolos
             matched = False
-            for sym, tipo in sorted(simbolos.items(), key=lambda x: -len(x[0])):  # priorizar multi-char
+            for sym, tipo in sorted(SIMBOLOS.items(), key=lambda x: -len(x[0])):  # priorizar multi-char
                 if linea[columna:columna + len(sym)] == sym:
                     tokens.append(Token(tipo, sym, fila, columna))
                     columna += len(sym)
