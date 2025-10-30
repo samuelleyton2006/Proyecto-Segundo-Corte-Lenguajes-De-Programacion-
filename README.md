@@ -1,83 +1,171 @@
 # Proyecto-Segundo-Corte-Lenguajes-De-Programacion-
 Samuel Esteban Leyton Muñoz - Felipe Morales Robelto - William Alfonso Giraldo 
 
+# Expresiones aceptadas
+## 1. Operadores Lógicospython# OR (menor precedencia)
+x or y
+a or b or c
+
+AND
+x and y
+a and b and c
+
+NOT (precedencia más alta en lógicos)
+not x
+not (a and b)
+## 2. Operadores de Comparaciónpython# Igualdad
+x == y
+x != y
+
+Relacionales
+x < y
+x <= y
+x > y
+x >= y
 
 
-## 1. Sentencias Simples
+x is y
+x is not y 
+## 3. Operadores Aritméticos
+x + y
+x - y
+a + b - c
 
-Asignaciones: x = 5, x += 10, x -= 2, x *= 3, x /= 2, x %= 5
-Asignación a índices: lista[0] = 10
-Llamadas a funciones: funcion(), funcion(arg1, arg2)
-Acceso a atributos: objeto.atributo, obj.metodo()
-Sentencias de control: break, continue, pass
-Return: return, return valor
-Delete: del variable
-Import: import modulo, import modulo as alias, from modulo import item, from modulo import item as alias
-Print: print(), print(arg1, arg2)
+Multiplicación, división y módulo (mayor precedencia que +/-)
+x * y
+x / y
+x % y
+a * b / c % d
 
-## 2. Sentencias Compuestas
-If-Elif-Else
-While
-For
-Definicion de Funciones
-Definicion de Clases
-Try-Except-Finally
-## 3. Expresions
-Operadores Lógicos
-and, or, not
-Operadores de Comparación
-==, !=, <, <=, >, >=, in, is, is not
+Potencia (mayor precedencia)
+x ** y
+2 ** 8
 
-## Operadores Aritméticos
+Unarios (mayor precedencia)
++x
+-x
+## 4. Precedencia de Operadores (de menor a mayor)
+1. or                    Más bajo
+2. and
+3. not
+4. ==, !=, <, <=, >, >=, in, is, is not
+5. +, -                  (suma/resta)
+6. *, /, %              (multiplicación/división)
+7. +x, -x               (unarios)
+8. **                   
+## 5. Átomos (Valores básicos)python# Literales
+42                  # Enteros
+"texto"            # Cadenas
+True, False        # Booleanos
+None               # None
 
-Suma y resta: +, -
-Multiplicación, división, módulo: *, /, %
-Potencia: **
-Unarios: +x, -x
-## 4. Estructuras de Datos
-Listas
-Tuplas
-Diccionarios
-Conjuntos
-## 5. Literales
+Variables
+x
+nombre
+_privado
 
-Números enteros: 42, 0, -10
-Números decimales: 3.14, 0.5
-Cadenas: "texto", 'texto'
-Booleanos: True, False
-None: None
-## 6. Identificadores y Palabras Reservadas
 
-Variables: x, nombre, _privado
-self: self.atributo, self.metodo()
+self
+self.atributo
+## 6. Acceso y Llamadas
+funcion()
+funcion(arg1, arg2)
+funcion(a, b, c)
 
-## 7. Características Avanzadas
+Acceso a atributos con punto
+objeto.atributo
+obj.metodo()
+self.nombre
+
 Acceso encadenado
+objeto.atributo.metodo()
+persona.direccion.ciudad
 
-objeto.atributo.metodo().otro_atributo
-lista[0][1][2]
-funcion()(otra_funcion())
+Indexación
+lista[0]
+matriz[i]
+dict[key]
 
-Parámetros con Anotaciones de Tipo
-Expresiones complejas
-## 8. Bloques con Indentación
-La gramática maneja correctamente la indentación de Python con tokens especiales:
+Indexación encadenada
+lista[0][1]
+matriz[i][j][k]
 
-TAB: inicio de indentación
-TABend: fin de indentación
-NEWLINE: nueva línea
+Combinaciones
+objeto.metodo()[0]
+lista[0].atributo
+funcion().metodo()
+## 7. Estructuras de Datos
+[]
+[1, 2, 3]
+[x, y, z]
 
-# Limitaciones (No incluye):
-❌ Comprensiones de listas/diccionarios: [x for x in lista]
-❌ Decoradores: @decorador
-❌ Lambda functions: lambda x: x + 1
-❌ Argumentos *args y **kwargs
-❌ Context managers: with ... as ...:
-❌ Assertions: assert condicion
-❌ Global/Nonlocal: global x, nonlocal y
-❌ Yield: yield valor
-❌ Async/Await
-❌ Type hints complejos (Union, etc.)
-❌ F-strings: f"texto {variable}"
-❌ Slicing: lista[1:3], lista[::2]
-❌ Operadores bit a bit: &, |, ^, ~, <<, >>
+Tuplas
+()                  # Tupla vacía
+(1,)                # Tupla de un elemento
+(1, 2, 3)           # Tupla múltiple
+(x, y)
+
+ Diccionarios
+{"a": 1, "b": 2}
+{key: value}
+
+# Conjuntos
+{1, 2, 3}
+{x, y, z}
+
+## 8. Expresiones entre Paréntesis
+(a * b) / c
+((x + y) * z)
+## 9. Expresiones Complejas Soportadas
+2 + 3 * 4                    # = 14
+(2 + 3) * 4                  # = 20
+2 ** 3 ** 2                  # = 512 (asociatividad derecha)
+10 + 20 / 5 - 3              # = 11
+
+Expresiones lógicas complejas
+x > 5 and y < 10
+a == b or c != d
+not (x > 0 and y > 0)
+(x > 5 and y > 10) or z == 0
+
+Acceso encadenado complejo
+objeto.metodo()[0].atributo
+lista[i].metodo(arg).propiedad
+funcion(a, b).resultado[0]
+
+Expresiones en argumentos
+funcion(x + y, a * b)
+metodo(lista[0], dict[key])
+llamada(obj.attr, 10 + 20)
+
+
+## Expresiones NO Soportadas
+
+[x for x in range(10)]      
+
+## Expresiones lambda
+lambda x: x + 1              
+
+## Operadores bit a bit
+x & y, x | y, x ^ y         
+
+## Slicing
+lista[1:5]                
+
+## Asignación múltiple
+x, y = 1, 2              
+
+## Operador ternario
+x if condicion else y     
+
+## Walrus operator
+(x := 10)                
+
+## f-strings
+f"Valor: {x}"            
+
+## Desempaquetado
+*args, **kwargs           
+
+## @ (decoradores o matmul)
+@decorator                  

@@ -608,14 +608,6 @@ class ParserLL1Completo:
                 for entrada in tabla_agrupada[nt]:
                     print(entrada)
         
-        if verbose:
-            print(f"\n{'=' * 80}")
-            print(f"Total de entradas en la tabla: {len(self.tabla_parsing)}")
-            if conflictos:
-                print(f"⚠ ADVERTENCIA: Se encontraron {len(conflictos)} conflictos")
-            else:
-                print("✓ La gramática es LL(1) - no hay conflictos")
-            print("=" * 80)
         
         return self.tabla_parsing, conflictos
     
