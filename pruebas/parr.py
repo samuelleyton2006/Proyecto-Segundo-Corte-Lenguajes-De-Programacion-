@@ -1,5 +1,5 @@
 import sys
-from tokens_config import SIMBOLOS_INVERTIDOS, SIMBOLOS, SIMBOLOS_PARSER
+from analizador_lexico import SIMBOLOS
 
 
 class ParserLL1Completo:
@@ -20,37 +20,59 @@ class ParserLL1Completo:
         self.token_actual = None
         self.errores = []
         
+        # Mapeo de tokens a símbolos legibles para mensajes de error
+        self.TOKEN_A_SIMBOLO = self._crear_mapeo_tokens()
+        
+    def _crear_mapeo_tokens(self):
+        """Crea un mapeo de tipos de token a símbolos legibles para el usuario"""
+        # Invertir SIMBOLOS para obtener token -> símbolo
+        mapeo = {v: k for k, v in SIMBOLOS.items()}
+        
+        # Agregar tokens especiales y palabras reservadas
+        mapeo.update({
+            'NEWLINE': 'nueva línea',
+            'ENDMARKER': 'fin de archivo',
+            'TAB': 'indentación',
+            'TABend': 'dedentación',
+            'id': 'identificador',
+            'tk_entero': 'número',
+            'tk_cadena': 'cadena',
+            # Palabras reservadas
+            'if': 'if', 'elif': 'elif', 'else': 'else',
+            'while': 'while', 'for': 'for', 'def': 'def',
+            'class': 'class', 'return': 'return', 'break': 'break',
+            'continue': 'continue', 'pass': 'pass', 'del': 'del',
+            'import': 'import', 'from': 'from', 'as': 'as',
+            'try': 'try', 'except': 'except', 'finally': 'finally',
+            'in': 'in', 'is': 'is', 'and': 'and', 'or': 'or',
+            'not': 'not', 'True': 'True', 'False': 'False',
+            'None': 'None', 'self': 'self', 'print': 'print'
+        })
+        
+        return mapeo
+        
     def _definir_gramatica(self):
         return {
-            # Simbolo inicial
+            # Programa principal
             'programa': [
-                ['NEWLINE', 'programa'],
-                ['sentencias', 'programa_tail']
+                ['declaraciones']
             ],
-            'programa_tail': [
-                ['ENDMARKER'],
-                ['NEWLINE'],
-                ['TABend', 'programa_tail']
             
-            ],
-            # Sentencias
-            'sentencias': [
-                ['sentencia', 'sentencias'],
+            'declaraciones': [
+                ['declaracion', 'declaraciones'],
                 ['ε']
             ],
             
+            'declaracion': [
+                ['sentencia', 'NEWLINE'],
+                ['sentencia_compuesta'],
+                ['def_stmt'],
+                ['class_stmt'],
+                ['NEWLINE']
+            ],
+            
+            # Sentencias simples
             'sentencia': [
-                ['sentencia_simple', 'NEWLINE_opt'],
-                ['sentencia_compuesta']
-            ],
-            
-            'NEWLINE_opt': [
-                ['NEWLINE'],
-                ['ε']
-            ],
-            
-            'sentencia_simple': [
-
                 ['id', 'sentencia_id'],
                 ['self', 'sentencia_self'],
                 ['return_stmt'],
@@ -60,24 +82,20 @@ class ParserLL1Completo:
                 ['del_stmt'],
                 ['import_stmt'],
                 ['print_stmt']
-                
             ],
             
-            # Sentencias con id y self
             'sentencia_id': [
                 ['op_asignacion', 'expresion'],
-                ['tk_corchete_izq', 'expresion', 'tk_corchete_der', 'tk_asig', 'expresion'],
+                ['tk_corchete_izq', 'expresion', 'tk_corchete_der', 'asignacion_indexada'],
                 ['tk_par_izq', 'args_opt', 'tk_par_der'],
                 ['tk_punto', 'id', 'sentencia_id_dot']
-
             ],
-            #Ejemplos:
-            #x = 2
-            #lista[0] = 1
-            #f(3)
-            #obj.atributo = 2
-
-         
+            
+            'asignacion_indexada': [
+                ['tk_asig', 'expresion'],
+                ['ε']
+            ],
+            
             'sentencia_self': [
                 ['tk_punto', 'id', 'sentencia_id_dot'],
                 ['tk_par_izq', 'args_opt', 'tk_par_der']
@@ -85,13 +103,12 @@ class ParserLL1Completo:
             
             'sentencia_id_dot': [
                 ['op_asignacion', 'expresion'],
-                ['tk_corchete_izq', 'expresion', 'tk_corchete_der', 'tk_asig', 'expresion'],
+                ['tk_corchete_izq', 'expresion', 'tk_corchete_der', 'asignacion_indexada'],
                 ['tk_par_izq', 'args_opt', 'tk_par_der'],
                 ['tk_punto', 'id', 'sentencia_id_dot'],
                 ['ε']
             ],
             
-            # Operadores de asignación
             'op_asignacion': [
                 ['tk_asig'],
                 ['tk_mas_asig'],
@@ -101,7 +118,6 @@ class ParserLL1Completo:
                 ['tk_mod_asig']
             ],
             
-            # Otras sentencias simples
             'return_stmt': [
                 ['return', 'expresion_opt']
             ],
@@ -134,12 +150,9 @@ class ParserLL1Completo:
                 ['if_stmt'],
                 ['while_stmt'],
                 ['for_stmt'],
-                ['def_stmt'],
-                ['class_stmt'],
                 ['try_stmt']
             ],
             
-            # IF-ELIF-ELSE
             'if_stmt': [
                 ['if', 'expresion', 'tk_dos_puntos', 'bloque', 'elif_chain', 'else_opt']
             ],
@@ -154,25 +167,18 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # WHILE
             'while_stmt': [
                 ['while', 'expresion', 'tk_dos_puntos', 'bloque']
             ],
             
-            # FOR
             'for_stmt': [
                 ['for', 'id', 'in', 'expresion', 'tk_dos_puntos', 'bloque']
             ],
             
-            # DEF
             'def_stmt': [
-                ['def', 'id', 'tk_par_izq', 'parametros', 'tk_par_der', 'tk_dos_puntos','bloque']
+                ['def', 'id', 'tk_par_izq', 'parametros', 'tk_par_der', 'tk_dos_puntos', 'bloque']
             ],
-            'def_op': [
-                ['bloque'],
-                ['ε'],
-                ['NEWLINE']
-            ],
+            
             'parametros': [
                 ['parametro', 'lista_parametros'],
                 ['ε']
@@ -184,9 +190,10 @@ class ParserLL1Completo:
             ],
             
             'parametro': [
-                ['id', 'param_anotacion'], #param_default
+                ['id', 'param_anotacion'],
                 ['self', 'param_default']
             ],
+            
             'param_anotacion': [
                 ['tk_dos_puntos', 'tipo_anotacion', 'param_default'],
                 ['param_default']
@@ -201,12 +208,12 @@ class ParserLL1Completo:
                 ['tk_corchete_izq', 'tipo_anotacion', 'tk_corchete_der', 'tipo_suffix'],
                 ['ε']
             ],
+            
             'param_default': [
                 ['tk_asig', 'expresion'],
                 ['ε']
             ],
             
-            # CLASS
             'class_stmt': [
                 ['class', 'id', 'herencia_opt', 'tk_dos_puntos', 'bloque']
             ],
@@ -216,7 +223,6 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # TRY-EXCEPT-FINALLY
             'try_stmt': [
                 ['try', 'tk_dos_puntos', 'bloque', 'except_clauses', 'finally_opt']
             ],
@@ -236,21 +242,20 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # BLOQUE
+            # Bloque
             'bloque': [
-                ['NEWLINE', 'TAB', 'sentencias', 'bloque_refactor']
+                ['TAB', 'cuerpo_bloque', 'TABend']
             ],
-            'bloque_refactor': [
-                ['TABend'],
-                ['NEWLINE'],
-                ['ENDMARKER']
+            
+            'cuerpo_bloque': [
+                ['declaraciones']
             ],
-            # EXPRESIONES
+            
+            # Expresiones
             'expresion': [
                 ['expr_or']
             ],
             
-            # OR lógico
             'expr_or': [
                 ['expr_and', 'expr_or_prime']
             ],
@@ -260,7 +265,6 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # AND lógico
             'expr_and': [
                 ['expr_not', 'expr_and_prime']
             ],
@@ -270,13 +274,11 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # NOT lógico
             'expr_not': [
                 ['not', 'expr_not'],
                 ['expr_comparacion']
             ],
             
-            # Comparaciones
             'expr_comparacion': [
                 ['expr_aritmetica', 'expr_comp_prime']
             ],
@@ -302,7 +304,6 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # Aritmética: suma y resta
             'expr_aritmetica': [
                 ['termino', 'expr_arit_prime']
             ],
@@ -313,7 +314,6 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # Aritmética: multiplicación, división, módulo
             'termino': [
                 ['factor', 'termino_prime']
             ],
@@ -325,14 +325,12 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # Factor: unarios
             'factor': [
                 ['tk_suma', 'factor'],
                 ['tk_resta', 'factor'],
                 ['potencia']
             ],
             
-            # Potencia
             'potencia': [
                 ['atom', 'potencia_prime']
             ],
@@ -342,11 +340,10 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # Atómicos
             'atom': [
                 ['id', 'atom_suffix'],
                 ['self', 'atom_suffix'],
-                ['numero'],
+                ['tk_entero'],
                 ['tk_cadena'],
                 ['True'],
                 ['False'],
@@ -358,12 +355,12 @@ class ParserLL1Completo:
             
             'expresion_o_tupla': [
                 ['expresion', 'tupla_o_expr'],
-                ['tk_par_der']  # tupla vacía
+                ['tk_par_der']
             ],
             
             'tupla_o_expr': [
-                ['tk_coma', 'elementos_tupla_tail', 'tk_par_der'],  # tupla
-                ['tk_par_der']  # expresión entre paréntesis
+                ['tk_coma', 'elementos_tupla_tail', 'tk_par_der'],
+                ['tk_par_der']
             ],
             
             'atom_suffix': [
@@ -373,16 +370,6 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            'numero': [
-                ['tk_entero', 'numero_decimal']
-            ],
-            
-            'numero_decimal': [
-                ['tk_punto', 'tk_entero'],
-                ['ε']
-            ],
-            
-            # Argumentos
             'args_opt': [
                 ['args'],
                 ['ε']
@@ -397,7 +384,6 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # Listas
             'lista': [
                 ['tk_corchete_izq', 'elementos_lista', 'tk_corchete_der']
             ],
@@ -412,7 +398,6 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # Tuplas
             'elementos_tupla_tail': [
                 ['expresion', 'elementos_tupla_tail_cont'],
                 ['ε']
@@ -423,19 +408,18 @@ class ParserLL1Completo:
                 ['ε']
             ],
             
-            # Diccionarios y Conjuntos
             'diccionario_o_conjunto': [
                 ['tk_llave_izq', 'dict_o_set_contenido']
             ],
             
             'dict_o_set_contenido': [
                 ['expresion', 'dict_o_set_decision'],
-                ['tk_llave_der']  # dict/set vacío
+                ['tk_llave_der']
             ],
             
             'dict_o_set_decision': [
-                ['tk_dos_puntos', 'expresion', 'elementos_dict_tail', 'tk_llave_der'],  # diccionario
-                ['elementos_conjunto_tail', 'tk_llave_der']  # conjunto
+                ['tk_dos_puntos', 'expresion', 'elementos_dict_tail', 'tk_llave_der'],
+                ['elementos_conjunto_tail', 'tk_llave_der']
             ],
             
             'elementos_dict_tail': [
@@ -453,35 +437,25 @@ class ParserLL1Completo:
             ]
         }
     
-    # CÁLCULO DE FIRST
-    
     def calcular_first(self, verbose=False):
         """Calcula el conjunto FIRST para cada símbolo de la gramática"""
         if verbose:
-            print("=" * 60)
-            print("CALCULANDO CONJUNTOS FIRST")
-            print("=" * 60)
+            print("=" * 80)
+            print("CONJUNTOS PRIMEROS (FIRST)")
+            print("=" * 80)
         
-        # Inicializar FIRST para todos los no terminales
         for no_terminal in self.gramatica.keys():
             self.first[no_terminal] = set()
         
-        # Para terminales, FIRST(terminal) = {terminal}
         terminales = self._obtener_terminales()
         for terminal in terminales:
             self.first[terminal] = {terminal}
         
-        # FIRST(ε) = {ε}
         self.first[self.epsilon] = {self.epsilon}
         
-        # Iterar hasta que no haya cambios
         cambios = True
-        iteracion = 0
         while cambios:
             cambios = False
-            iteracion += 1
-            if verbose:
-                print(f"\nIteración {iteracion}:")
             
             for no_terminal, producciones in self.gramatica.items():
                 first_anterior = len(self.first[no_terminal])
@@ -491,21 +465,15 @@ class ParserLL1Completo:
                 
                 if len(self.first[no_terminal]) > first_anterior:
                     cambios = True
-                    if verbose:
-                        print(f"  PRIMEROS({no_terminal}) = {self.first[no_terminal]}")
         
         if verbose:
-            print("\n" + "=" * 60)
-            print("CONJUNTOS PRIMEROS:")
-            print("=" * 60)
-            for simbolo in sorted(self.first.keys()):
-                if simbolo in self.gramatica:
-                    print(f"PRIMEROS({simbolo:20s}) = {self.first[simbolo]}")
+            for simbolo in sorted(self.gramatica.keys()):
+                first_legible = self._convertir_set_a_legible(self.first[simbolo])
+                print(f"FIRST({simbolo:25s}) = {{{first_legible}}}")
         
         return self.first
     
     def _agregar_first_produccion(self, no_terminal, produccion):
-        """Agrega elementos a FIRST de un no terminal basado en una producción"""
         if produccion[0] == self.epsilon:
             self.first[no_terminal].add(self.epsilon)
             return
@@ -523,16 +491,12 @@ class ParserLL1Completo:
                 self.first[no_terminal].add(simbolo)
                 break
     
-    # ===================================================================
-    # CÁLCULO DE FOLLOW
-    # ===================================================================
-    
     def calcular_follow(self, verbose=False):
         """Calcula el conjunto FOLLOW para cada no terminal"""
         if verbose:
-            print("\n" + "=" * 60)
-            print("CALCULANDO CONJUNTOS SIGUIENTES")
-            print("=" * 60)
+            print("\n" + "=" * 80)
+            print("CONJUNTOS SIGUIENTES (FOLLOW)")
+            print("=" * 80)
         
         for no_terminal in self.gramatica.keys():
             self.follow[no_terminal] = set()
@@ -541,12 +505,8 @@ class ParserLL1Completo:
         self.follow[simbolo_inicial].add(self.endmarker)
         
         cambios = True
-        iteracion = 0
         while cambios:
             cambios = False
-            iteracion += 1
-            if verbose:
-                print(f"\nIteración {iteracion}:")
             
             for no_terminal, producciones in self.gramatica.items():
                 for produccion in producciones:
@@ -574,26 +534,20 @@ class ParserLL1Completo:
                         
                         if len(self.follow[simbolo]) > follow_anterior:
                             cambios = True
-                            if verbose:
-                                print(f"  SIGUIENTES({simbolo}) = {self.follow[simbolo]}")
         
         if verbose:
-            print("\n" + "=" * 60)
-            print("CONJUNTOS SIGUIENTES INALES:")
-            print("=" * 60)
-            for simbolo in sorted(self.follow.keys()):
-                print(f"SIGUIENTES({simbolo:20s}) = {self.follow[simbolo]}")
+            for simbolo in sorted(self.gramatica.keys()):
+                follow_legible = self._convertir_set_a_legible(self.follow[simbolo])
+                print(f"FOLLOW({simbolo:25s}) = {{{follow_legible}}}")
         
         return self.follow
-    
-    # CONSTRUCCION DE TABLA DE PARSING
     
     def construir_tabla_parsing(self, verbose=False):
         """Construye la tabla de análisis sintáctico LL(1)"""
         if verbose:
-            print("\n" + "=" * 60)
-            print("CONSTRUYENDO TABLA DE PARSING LL(1)")
-            print("=" * 60)
+            print("\n" + "=" * 80)
+            print("TABLA DE PREDICCIÓN LL(1)")
+            print("=" * 80)
         
         conflictos = []
         
@@ -627,14 +581,32 @@ class ParserLL1Completo:
                         else:
                             self.tabla_parsing[(no_terminal, terminal)] = produccion
 
-        print("\n" + "=" * 60)
-        print(f"TABLA DE PARSING: {len(self.tabla_parsing)} entradas")
-        print("=" * 60)
+        if verbose:
+            tabla_agrupada = {}
+            for (nt, term), prod in sorted(self.tabla_parsing.items()):
+                if nt not in tabla_agrupada:
+                    tabla_agrupada[nt] = []
+                term_legible = self._obtener_simbolo_esperado(term)
+                prod_legible = ' '.join([self._obtener_simbolo_esperado(s) if s != 'ε' else 'ε' for s in prod])
+                tabla_agrupada[nt].append(f"  [{term_legible:20s}] -> {prod_legible}")
+            
+            for nt in sorted(tabla_agrupada.keys()):
+                print(f"\n{nt}:")
+                for entrada in tabla_agrupada[nt]:
+                    print(entrada)
+        
+        if verbose:
+            print(f"\n{'=' * 80}")
+            print(f"Total de entradas en la tabla: {len(self.tabla_parsing)}")
+            if conflictos:
+                print(f"⚠ ADVERTENCIA: Se encontraron {len(conflictos)} conflictos")
+            else:
+                print("✓ La gramática es LL(1) - no hay conflictos")
+            print("=" * 80)
         
         return self.tabla_parsing, conflictos
     
     def _calcular_first_produccion(self, produccion):
-        """Calcula FIRST de una producción completa"""
         resultado = set()
         
         if produccion[0] == self.epsilon:
@@ -654,7 +626,6 @@ class ParserLL1Completo:
         return resultado
     
     def _obtener_terminales(self):
-        """Extrae todos los terminales mencionados en la gramática"""
         terminales = set()
         for producciones in self.gramatica.values():
             for produccion in producciones:
@@ -663,7 +634,14 @@ class ParserLL1Completo:
                         terminales.add(simbolo)
         return terminales
     
-    # ANÁLISIS SINTÁCTICO
+    def _convertir_set_a_legible(self, conjunto):
+        legibles = []
+        for token in sorted(conjunto):
+            if token == self.epsilon:
+                legibles.append('ε')
+            else:
+                legibles.append(self._obtener_simbolo_esperado(token))
+        return ', '.join(legibles)
     
     def parsear(self, tokens):
         """Analiza sintácticamente una lista de tokens"""
@@ -674,192 +652,145 @@ class ParserLL1Completo:
         
         try:
             self._parsear_no_terminal('programa')
-            print("✓ Análisis sintáctico completado exitosamente")
-            return True
+            
+            # Verificar que llegamos al final
+            if self.token_actual.tipo != 'ENDMARKER':
+                self._reportar_error_sintactico('programa')
+            
+            return True, "El analisis sintactico ha finalizado exitosamente."
         except SyntaxError as e:
-            print(f"✗ {e}")
-            return False
+            return False, str(e)
     
     def _parsear_no_terminal(self, no_terminal):
-        """Parsea un no terminal usando la tabla de parsing"""
         if no_terminal == self.epsilon:
             return
         
         terminal_actual = self.token_actual.tipo
         
-        # Buscar en la tabla de parsing
         if (no_terminal, terminal_actual) in self.tabla_parsing:
             produccion = self.tabla_parsing[(no_terminal, terminal_actual)]
             
-            # Aplicar la producción
             for simbolo in produccion:
                 if simbolo == self.epsilon:
                     continue
                 elif simbolo in self.gramatica:
-                    # Es un no terminal
                     self._parsear_no_terminal(simbolo)
                 else:
-                    # Es un terminal
                     self._match(simbolo)
         else:
-            if (no_terminal in SIMBOLOS_PARSER):
-                no_terminal = SIMBOLOS_PARSER[no_terminal]
-            elif (no_terminal in SIMBOLOS_INVERTIDOS):
-                no_terminal = SIMBOLOS_INVERTIDOS[no_terminal]
-            elif (no_terminal in SIMBOLOS):
-                no_terminal = SIMBOLOS[no_terminal]
-            
-            if(terminal_actual in SIMBOLOS_PARSER):
-                terminal_actual = SIMBOLOS_PARSER[terminal_actual]
-            elif (terminal_actual in SIMBOLOS_INVERTIDOS):
-                terminal_actual = SIMBOLOS_INVERTIDOS[terminal_actual]
-            elif (terminal_actual in SIMBOLOS):
-                terminal_actual = SIMBOLOS[terminal_actual]
-            self._error(f"Sintaxis invalida({no_terminal}, {terminal_actual})")
+            self._reportar_error_sintactico(no_terminal)
     
     def _match(self, tipo_esperado):
-        """Verifica y consume un token del tipo esperado"""
         if self.token_actual.tipo == tipo_esperado:
             self._avanzar()
         else:
-            if(tipo_esperado in SIMBOLOS_PARSER):
-                tipo_esperado = SIMBOLOS_PARSER[tipo_esperado]
-            elif (tipo_esperado in SIMBOLOS_INVERTIDOS):
-                tipo_esperado = SIMBOLOS_INVERTIDOS[tipo_esperado]
-            elif (tipo_esperado in SIMBOLOS):
-                tipo_esperado = SIMBOLOS[tipo_esperado]
-
-            if(self.token_actual.tipo in SIMBOLOS_PARSER):
-                actual_tipo = SIMBOLOS_PARSER[self.token_actual.tipo]
-            elif (self.token_actual.tipo in SIMBOLOS_INVERTIDOS):
-                actual_tipo = SIMBOLOS_INVERTIDOS[self.token_actual.tipo]
-            elif (self.token_actual.tipo in SIMBOLOS):
-                actual_tipo = SIMBOLOS[self.token_actual.tipo]
-            else:
-                actual_tipo = self.token_actual.tipo
-            self._error(f"Se esperaba '{tipo_esperado}' pero se encontró '{actual_tipo}'")
+            self._reportar_error_match(tipo_esperado)
 
     def _avanzar(self):
-        """Avanza al siguiente token"""
         if self.pos < len(self.tokens) - 1:
             self.pos += 1
             self.token_actual = self.tokens[self.pos]
     
-    def _error(self, mensaje):
-        """Registra un error sintáctico"""
-        error_msg = f"Error sintáctico en línea {self.token_actual.fila}, columna {self.token_actual.columna}: {mensaje}"
-        self.errores.append(error_msg)
+    def _obtener_lexema_token(self, token):
+        if token.valor is not None:
+            return str(token.valor)
+        elif token.tipo in self.TOKEN_A_SIMBOLO:
+            return self.TOKEN_A_SIMBOLO[token.tipo]
+        else:
+            return token.tipo
+    
+    def _obtener_simbolo_esperado(self, tipo_token):
+        if tipo_token in self.TOKEN_A_SIMBOLO:
+            return self.TOKEN_A_SIMBOLO[tipo_token]
+        else:
+            return tipo_token
+    
+    def _obtener_tokens_esperados(self, no_terminal):
+        esperados = []
+        
+        for (nt, terminal), produccion in self.tabla_parsing.items():
+            if nt == no_terminal:
+                simbolo = self._obtener_simbolo_esperado(terminal)
+                esperados.append(simbolo)
+        
+        return esperados
+    
+    def _reportar_error_sintactico(self, no_terminal):
+        """Reporta un error sintáctico en el formato requerido"""
+        linea = self.token_actual.fila
+        columna = self.token_actual.columna
+        lexema_encontrado = self._obtener_lexema_token(self.token_actual)
+        tokens_esperados = self._obtener_tokens_esperados(no_terminal)
+        
+        # Detectar error de indentación específico
+        if self.token_actual.tipo == 'TAB' and 'indentación' not in tokens_esperados:
+            error_msg = f'<{linea},{columna}> Error sintactico: falla de indentacion.'
+            raise SyntaxError(error_msg)
+        
+        # Si esperamos TAB (inicio de bloque) pero encontramos otra cosa
+        if 'TAB' in [t for (nt, t), _ in self.tabla_parsing.items() if nt == no_terminal]:
+            if self.token_actual.tipo in ('ENDMARKER', 'TABend', 'NEWLINE'):
+                error_msg = f'<{linea},{columna}> Error sintactico: se esperaba un bloque indentado.'
+                raise SyntaxError(error_msg)
+        
+        if 'dedentación' in tokens_esperados and self.token_actual.tipo not in ('TABend', 'ENDMARKER'):
+            error_msg = f'<{linea},{columna}> Error sintactico: dedentación incorrecta.'
+            raise SyntaxError(error_msg)
+        
+        # Formatear tokens esperados
+        if tokens_esperados:
+            esperados_str = ', '.join([f'"{t}"' for t in sorted(set(tokens_esperados))])
+        else:
+            esperados_str = '(ninguno)'
+        
+        error_msg = f'<{linea},{columna}> Error sintactico: se encontro: "{lexema_encontrado}"; se esperaba: {esperados_str}.'
         raise SyntaxError(error_msg)
-
+    
+    def _reportar_error_match(self, tipo_esperado):
+        linea = self.token_actual.fila
+        columna = self.token_actual.columna
+        lexema_encontrado = self._obtener_lexema_token(self.token_actual)
+        simbolo_esperado = self._obtener_simbolo_esperado(tipo_esperado)
+        
+        error_msg = f'<{linea},{columna}> Error sintactico: se encontro: "{lexema_encontrado}"; se esperaba: "{simbolo_esperado}".'
+        raise SyntaxError(error_msg)
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Uso: python parser_ll1.py <opcion> [archivo.py]")
-        print("\nOpciones:")
-        print("  --analizar <archivo>  : Analiza sintácticamente un archivo")
-        print("  --tablas              : Muestra FIRST, FOLLOW y tabla de parsing")
-        print("  --todo <archivo>      : Muestra tablas y analiza el archivo")
+        print("Uso: python parr.py <archivo.py> [--mostrar-tablas]")
         sys.exit(1)
     
-    opcion = sys.argv[1]
+    archivo = sys.argv[1]
+    mostrar_tablas = '--mostrar-tablas' in sys.argv
     
-    parser = ParserLL1Completo()
-    
-    if opcion == "--tablas":
-        # Solo mostrar las tablas
-        parser.calcular_first(verbose=True)
-        parser.calcular_follow(verbose=True)
-        parser.construir_tabla_parsing(verbose=True)
+    try:
+        from analizador_lexico import analizador_lexico
         
-    elif opcion == "--analizar" and len(sys.argv) == 3:
-        # Solo analizar archivo
-        archivo = sys.argv[2]
+        with open(archivo, 'r', encoding='utf-8') as f:
+            codigo = f.read()
         
-        try:
-            from analizador_lex import analizador_lexico
-            
-            with open(archivo, 'r', encoding='utf-8') as f:
-                codigo = f.read()
-            
-            print(f"Analizando archivo: {archivo}")
-            print("=" * 60)
-            
-            print("\n[1] Análisis Léxico...")
-            tokens = analizador_lexico(codigo)
-            print(f"✓ Se generaron {len(tokens)} tokens")
-            
-            print("\n[2] Preparando parser LL(1)...")
-            parser.calcular_first(verbose=False)
-            parser.calcular_follow(verbose=False)
-            parser.construir_tabla_parsing(verbose=False)
-            print("✓ Tablas FIRST, FOLLOW y Parsing construidas")
-            
-            print("\n[3] Análisis Sintáctico...")
-            resultado = parser.parsear(tokens)
-            
-            print("\n" + "=" * 60)
-            if resultado:
-                print("RESULTADO: ✓ El archivo es sintácticamente correcto")
-                sys.exit(0)
-            else:
-                print("RESULTADO: ✗ Se encontraron errores sintácticos")
-                sys.exit(1)
-                
-        except FileNotFoundError:
-            print(f"✗ Error: No se encontró el archivo '{archivo}'")
-            sys.exit(1)
-        except Exception as e:
-            print(f"✗ Error durante el análisis: {e}")
-            sys.exit(1)
-    
-    elif opcion == "--todo" and len(sys.argv) == 3:
-        # Mostrar tablas y analizar
-        archivo = sys.argv[2]
+        tokens = analizador_lexico(codigo)
         
-        try:
-            from analizador_lex import analizador_lexico
+        parser = ParserLL1Completo()
+        parser.calcular_first(verbose=mostrar_tablas)
+        parser.calcular_follow(verbose=mostrar_tablas)
+        parser.construir_tabla_parsing(verbose=mostrar_tablas)
+        
+        if mostrar_tablas:
+            print("\n" + "=" * 80)
+            print("INICIANDO ANÁLISIS SINTÁCTICO")
+            print("=" * 80 + "\n")
+        
+        exito, mensaje = parser.parsear(tokens)
+        
+        print(mensaje)
+        
+        sys.exit(0 if exito else 1)
             
-            # Mostrar tablas
-            parser.calcular_first(verbose=True)
-            parser.calcular_follow(verbose=True)
-            parser.construir_tabla_parsing(verbose=True)
-            
-            # Analizar archivo
-            with open(archivo, 'r', encoding='utf-8') as f:
-                codigo = f.read()
-            
-            print("\n" + "=" * 60)
-            print(f"ANALIZANDO ARCHIVO: {archivo}")
-            print("=" * 60)
-            
-            print("\n[1] Análisis Léxico...")
-            tokens = analizador_lexico(codigo)
-            print(tokens)
-            print(f"✓ Se generaron {len(tokens)} tokens")
-            
-            print("\n[2] Análisis Sintáctico...")
-            resultado = parser.parsear(tokens)
-            
-            print("\n" + "=" * 60)
-            if resultado:
-                print("RESULTADO: ✓ El archivo es sintácticamente correcto")
-                sys.exit(0)
-            else:
-                print("RESULTADO: ✗ Se encontraron errores sintácticos")
-                sys.exit(1)
-                
-        except FileNotFoundError:
-            print(f"✗ Error: No se encontró el archivo '{archivo}'")
-            sys.exit(1)
-        except Exception as e:
-            print(f"✗ Error durante el análisis: {e}")
-            sys.exit(1)
-    
-    else:
-        print("✗ Opción no válida")
-        print("\nUso correcto:")
-        print("  python parser_ll1.py --tablas")
-        print("  python parser_ll1.py --analizar archivo.py")
-        print("  python parser_ll1.py --todo archivo.py")
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo '{archivo}'")
+        sys.exit(1)
+    except Exception as e:
+        print(f"{e}")
         sys.exit(1)
