@@ -36,7 +36,7 @@ PALABRAS_RESERVADAS = {
     'False', 'None', 'True', 'and', 'as', 'break', 'class', 'continue',
     'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from',
     'if', 'import', 'in', 'is', 'not', 'or', 'pass', 'return', 'try',
-    'while', 'print', 'self'
+    'while', 'print', 'self','raise'
 }
 
 tipos_datos = {'int', 'float', 'str', 'bool', 'list', 'tuple', 'dict', 'set'}

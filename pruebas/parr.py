@@ -73,6 +73,7 @@ class ParserLL1Completo:
             
             # Sentencias simples
             'sentencia': [
+                ['raise_stmt'],
                 ['id', 'sentencia_id'],
                 ['self', 'sentencia_self'],
                 ['return_stmt'],
@@ -82,6 +83,18 @@ class ParserLL1Completo:
                 ['del_stmt'],
                 ['import_stmt'],
                 ['print_stmt']
+            ],
+            'raise_stmt': [
+                ['raise', 'raise_excepcion']
+            ],
+            'raise_excepcion': [
+                ['expresion', 'raise_from'],  
+                ['ε'] 
+            ],
+
+            'raise_from': [
+                ['from', 'expresion'],  # raise Exception from cause
+                ['ε']  # solo raise Exception
             ],
             
             'sentencia_id': [

@@ -1,21 +1,12 @@
-import math  # Importamos la librería para usar π (pi)
+def factorial(n: int):
+    """Factorial recursivo para n >= 0."""
+    if n < 0:
+        raise ValueError("n debe ser no negativo")
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
 
-class Circulo:
-    # Constructor: recibe el radio como parámetro
-    def __init__(self, radio):
-        self.radio = radio
-
-    # Método para calcular el área del círculo
-    def calcular_area(self):
-        area = math.pi * (self.radio ** 2)
-        return area
-
-# --- Programa principal ---
-# Pedir al usuario el radio
-r = float(input("Ingrese el radio del círculo: "))
-
-# Crear un objeto de la clase Circulo
-mi_circulo = Circulo(r)
-
-# Calcular y mostrar el área
-print("El área del círculo con radio ")
+# Ejemplo
+if __name__ == "__main__":
+    for i in range(6):
+        print(factorial(i))  
